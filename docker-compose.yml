@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: gokiltech-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: akhdan
+      POSTGRES_PASSWORD: Adanarya!
+      POSTGRES_DB: gokiltech
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata-gokiltech:/var/lib/postgresql/data
+    networks:
+      - gokiltech-net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: gokiltech-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gokiltech.com
+      PGADMIN_DEFAULT_PASSWORD: Adanarya!
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - gokiltech-net
+    depends_on:
+      - db
+
+networks:
+  gokiltech-net:
+    driver: bridge
+
+volumes:
+  pgdata-gokiltech:
+  pgadmin-data:

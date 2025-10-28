@@ -1,0 +1,11 @@
+APP_PORT=:8910
+
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=akhdan
+DB_PASSWORD=Adanarya!
+DB_NAME=gokiltech
+DB_SSLMODE=disable
+
+JWT_SECRET=rahasiabangetjanganadairyangtaua
