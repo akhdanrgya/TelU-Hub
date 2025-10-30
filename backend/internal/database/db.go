@@ -24,11 +24,11 @@ func InitDB() {
 
 	log.Println("Database connection successful! 🐘")
 
-	log.Println("Menjalankan Auto Migration untuk User...")
+	log.Println("Menjalankan Auto Migration")
 	err = DB.AutoMigrate(&models.User{})
 	if err != nil {
 		log.Fatalf("ERROR: Gagal nge-migrate tabel User: %v", err)
 	}
 
-	log.Println("Migrasi tabel 'users' sukses!")
+	log.Println("Migrasi tabel sukses!")
 }

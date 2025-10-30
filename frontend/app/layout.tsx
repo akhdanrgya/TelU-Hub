@@ -47,16 +47,17 @@ export default function RootLayout({
             <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
               {children}
             </main>
-            <footer className="w-full flex items-center justify-center py-3">
-              <Link
-                isExternal
-                className="flex items-center gap-1 text-current"
-                href="https://heroui.com?utm_source=next-app-template"
-                title="heroui.com homepage"
-              >
-                <span className="text-default-600">Powered by</span>
-                <p className="text-primary">HeroUI</p>
-              </Link>
+            <footer className="w-full bg-gray-100 dark:bg-gray-900 p-6 mt-12">
+              <div className="container mx-auto max-w-7xl text-center">
+                <p className="text-sm">
+                  © 2025 TelU-Hub Store. Bismillah Nilainya A.
+                </p>
+                <div className="flex justify-center gap-4 mt-2 text-sm">
+                  <Link href="/about" >Tentang Kami</Link>
+                  <Link href="/privacy">Kebijakan Privasi</Link>
+                  <Link href="/contact">Kontak</Link>
+                </div>
+              </div>
             </footer>
           </div>
         </Providers>
