@@ -1,66 +1,54 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Next.js + HeroUI",
-  description: "Make beautiful websites regardless of your design experience.",
+  // Ganti nama & deskripsi
+  name: "TelU-Hub Store",
+  description: "Toko online keren buat sobat mahasiswa Telkom.",
+  
   navItems: [
     {
       label: "Home",
       href: "/",
     },
     {
-      label: "Docs",
-      href: "/docs",
+      label: "Shop",
+      href: "/shop",
     },
     {
-      label: "Pricing",
-      href: "/pricing",
+      label: "Kategori",
+      href: "/categories",
     },
     {
-      label: "Blog",
-      href: "/blog",
-    },
-    {
-      label: "About",
+      label: "Tentang Kami",
       href: "/about",
     },
   ],
+
   navMenuItems: [
     {
       label: "Profile",
       href: "/profile",
     },
     {
-      label: "Dashboard",
-      href: "/dashboard",
+      label: "Pesanan Saya",
+      href: "/orders",
     },
     {
-      label: "Projects",
-      href: "/projects",
-    },
-    {
-      label: "Team",
-      href: "/team",
-    },
-    {
-      label: "Calendar",
-      href: "/calendar",
-    },
-    {
-      label: "Settings",
+      label: "Pengaturan",
       href: "/settings",
     },
     {
-      label: "Help & Feedback",
-      href: "/help-feedback",
+      label: "Bantuan",
+      href: "/help",
     },
     {
       label: "Logout",
       href: "/logout",
     },
   ],
+  
   links: {
-    github: "https://github.com/heroui-inc/heroui",
+    github: "https://github.com/akhdanrgya/telu-hub",
     twitter: "https://twitter.com/hero_ui",
     docs: "https://heroui.com",
     discord: "https://discord.gg/9b6yyZKmH4",
