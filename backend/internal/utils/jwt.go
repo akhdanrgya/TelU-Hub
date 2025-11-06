@@ -1,3 +1,5 @@
+// backend/internal/utils/jwt.go (VERSI BARU YANG BENER)
+
 package utils
 
 import (
@@ -6,15 +8,24 @@ import (
 	"github.com/akhdanrgya/telu-hub/config"
 	"github.com/golang-jwt/jwt/v5"
 )
+type JWTClaims struct {
+	UserID uint   `json:"user_id"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
+}
 
 func GenerateToken(userID uint, role string) (string, error) {
 	jwtSecret := config.GetJWTSecret()
+	
+	expirationTime := time.Now().Add(72 * time.Hour)
 
-	claims := jwt.MapClaims{
-		"user_id": userID,
-		"role":    role,
-		"exp":     time.Now().Add(time.Hour * 72).Unix(), 
-		"iat":     time.Now().Unix(),                      
+	claims := &JWTClaims{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

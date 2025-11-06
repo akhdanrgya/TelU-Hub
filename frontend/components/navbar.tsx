@@ -1,3 +1,4 @@
+'use client'
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -13,13 +14,22 @@ import { Badge } from "@heroui/badge";
 import NextLink from "next/link";
 import clsx from "clsx";
 import { link as linkStyles } from "@heroui/theme";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/dropdown";
+import { Avatar } from "@heroui/avatar";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Logo } from "@/components/icons";
-import { FiShoppingCart, FiUser } from "react-icons/fi"; 
+import { FiShoppingCart, FiUser } from "react-icons/fi";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Navbar = () => {
+  const { isAuthenticated, user, logout, loading } = useAuth();
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
@@ -30,14 +40,13 @@ export const Navbar = () => {
             <p className="font-bold text-inherit">{siteConfig.name}</p>
           </NextLink>
         </NavbarBrand>
-        
         <ul className="hidden lg:flex gap-4 justify-start ml-2">
           {siteConfig.navItems.map((item) => (
             <NavbarItem key={item.href}>
               <NextLink
                 className={clsx(
                   linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
+                  "data-[active=true]:text-primary data-[active=true]:font-medium"
                 )}
                 color="foreground"
                 href={item.href}
@@ -56,29 +65,84 @@ export const Navbar = () => {
         <NavbarItem className="hidden sm:flex gap-2">
           <ThemeSwitch />
         </NavbarItem>
-        
-        <NavbarItem className="hidden md:flex gap-2">
-          <Button
-            as={NextLink}
-            href="/login"
-            variant="ghost" 
-            startContent={<FiUser size={18} />}
-          >
-            Login
-          </Button>
 
-          <Button
-            as={NextLink}
-            href="/cart"
-            variant="flat"
-            color="primary"
-          >
-            <Badge content="3" color="danger">
-              <FiShoppingCart size={20} />
-            </Badge>
-            <span className="ml-2">Keranjang</span>
-          </Button>
-        </NavbarItem>
+        {loading ? (
+          <NavbarItem className="hidden md:flex">
+            <p className="text-default-500">Loading...</p>
+          </NavbarItem>
+        ) : isAuthenticated ? (
+          <>
+            <NavbarItem className="hidden md:flex">
+              <div className="flex items-center gap-4"> {/* Kasih gap dikit */}
+                
+                {/* --- Tombol Keranjang --- */}
+                <Button variant="light" isIconOnly as={NextLink} href="/cart">
+                  <Badge content="3" color="danger"> {/* Nanti '3' ganti state */}
+                    <FiShoppingCart size={20} />
+                  </Badge>
+                </Button>
+
+                {/* --- INI DIA DROPDOWN PROFIL-NYA --- */}
+                <Dropdown placement="bottom-end">
+                  <DropdownTrigger>
+                    <Avatar
+                      isBordered
+                      as="button"
+                      className="transition-transform"
+                      color="primary"
+                      size="sm"
+                      src={user?.profile_image_url} 
+                      name={user?.username.charAt(0).toUpperCase()}
+                    />
+                  </DropdownTrigger>
+                  <DropdownMenu aria-label="Profile Actions" variant="flat">
+                    
+                    <DropdownItem
+                      key="profile-info"
+                      className="h-14 gap-2"
+                      isReadOnly
+                    >
+                      <p className="font-semibold">Signed in as</p>
+                      <p className="font-semibold">{user?.email}</p>
+                    </DropdownItem>
+                    
+                    <DropdownItem key="profile" as={NextLink} href="/profile">
+                      Profil Saya
+                    </DropdownItem>
+                    
+                    <DropdownItem key="orders" as={NextLink} href="/orders">
+                      Pesanan Saya
+                    </DropdownItem>
+                    
+                    <DropdownItem key="logout" color="danger" onPress={logout}>
+                      Logout
+                    </DropdownItem>
+                    
+                  </DropdownMenu>
+                </Dropdown>
+
+              </div>
+            </NavbarItem>
+          </>
+        ) : (
+          <NavbarItem className="hidden md:flex gap-2">
+            <Button
+              as={NextLink}
+              href="/login"
+              variant="ghost"
+              startContent={<FiUser size={18} />}
+            >
+              Login
+            </Button>
+            {/* <Button
+              as={NextLink}
+              href="/register"
+              variant="ghost"
+            >
+              Register
+            </Button> */}
+          </NavbarItem>
+        )}
       </NavbarContent>
 
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
@@ -94,7 +158,11 @@ export const Navbar = () => {
           {siteConfig.navMenuItems.map((item, index) => (
             <NavbarMenuItem key={`${item}-${index}`}>
               <Link
-                color={ index === (siteConfig.navMenuItems.length - 1) ? "danger" : "foreground" }
+                color={
+                  index === siteConfig.navMenuItems.length - 1
+                    ? "danger"
+                    : "foreground"
+                }
                 href={item.href}
                 size="lg"
               >
@@ -103,6 +171,19 @@ export const Navbar = () => {
             </NavbarMenuItem>
           ))}
         </div>
+        {/* Tambah Logout di mobile menu juga kalo perlu */}
+        {isAuthenticated && (
+          <NavbarMenuItem>
+            <Button
+              onPress={logout}
+              color="danger"
+              variant="flat"
+              className="w-full"
+            >
+              Logout
+            </Button>
+          </NavbarMenuItem>
+        )}
       </NavbarMenu>
     </HeroUINavbar>
   );

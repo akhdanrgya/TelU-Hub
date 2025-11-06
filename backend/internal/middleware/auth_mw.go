@@ -1,64 +1,53 @@
 package middleware
 
 import (
-	"strings"
+	"log"
 
 	"github.com/akhdanrgya/telu-hub/config"
+	"github.com/akhdanrgya/telu-hub/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 func Protected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		authHeader := c.Get("Authorization")
-		if authHeader == "" {
+		tokenString := c.Cookies("token")
+
+		if tokenString == "" {
+			log.Println("Middleware Error: Cookie 'token' tidak ditemukan")
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Request not authorized, missing header",
+				"error":   "Unauthorized",
+				"message": "Token tidak ditemukan, silakan login",
 			})
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid token format",
-			})
-		}
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		claims := &utils.JWTClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fiber.ErrUnauthorized
+				return nil, fiber.NewError(fiber.StatusUnauthorized, "Signing method token salah")
 			}
 			return []byte(config.GetJWTSecret()), nil
 		})
 
-		if err != nil || !token.Valid {
+		if err != nil {
+			log.Printf("Middleware Error: Token parse gagal: %v", err)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid or expired token",
+				"error":   "Unauthorized",
+				"message": "Token tidak valid atau sudah expired",
 			})
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to parse token claims",
+		if !token.Valid {
+			log.Println("Middleware Error: Token tidak valid")
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":   "Unauthorized",
+				"message": "Token tidak valid",
 			})
 		}
 
-		c.Locals("user_id", claims["user_id"])
-		c.Locals("role", claims["role"])
+		c.Locals("user_id", claims.UserID)
+		c.Locals("user_role", claims.Role)
 
-		return c.Next()
-	}
-}
-
-func ProtectedAdmin() fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		role, ok := c.Locals("role").(string)
-		if !ok || role != "admin" {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error": "Access denied: Admin role required",
-			})
-		}
 		return c.Next()
 	}
 }
