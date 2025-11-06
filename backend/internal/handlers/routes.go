@@ -21,22 +21,23 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	})
 
 	auth := api.Group("/auth")
-	auth.Post("/register", authHandler.Register)
-	auth.Post("/login", authHandler.Login)
-	auth.Post("/logout", authHandler.Logout)
+		auth.Post("/register", authHandler.Register)
+		auth.Post("/login", authHandler.Login)
+		auth.Post("/logout", authHandler.Logout)
 
 	me := api.Group("/me", middleware.Protected())
-	me.Get("/", authHandler.GetUserData)
+		me.Get("/", authHandler.GetUserData)
+		me.Get("/products", productHandler.GetMyProducts)
 
 	admin := api.Group("/admin", middleware.Protected(), middleware.RoleRequired("admin"))
-
-	admin.Post("/promote/:id", authHandler.PromoteUser)
+		admin.Post("/promote/:id", authHandler.PromoteUser)
 
 	products := api.Group("/products")
-	
-	products.Get("/", productHandler.GetAllProducts)
-	products.Get("/:id", productHandler.GetProductByID)
-	products.Post("/", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.CreateProduct)
+		products.Get("/", productHandler.GetAllProducts)
+		products.Get("/:id", productHandler.GetProductByID)
+		products.Post("/", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.CreateProduct)
+		products.Put("/:id", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.UpdateProduct)
+		products.Delete("/:id", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.DeleteProduct)
 
 	app.Get("/ws/chat/:channel_id", middleware.Protected(), websocket.New(func(c *websocket.Conn) {
 		log.Println("Koneksi WebSocket baru!")

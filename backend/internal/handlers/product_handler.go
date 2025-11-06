@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/akhdanrgya/telu-hub/internal/models"
+	"github.com/akhdanrgya/telu-hub/internal/models" 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
@@ -13,7 +13,6 @@ type ProductHandler struct {
 func NewProductHandler(db *gorm.DB) *ProductHandler {
 	return &ProductHandler{DB: db}
 }
-
 
 type CreateProductInput struct {
 	Name        string  `json:"name" validate:"required"`
@@ -51,15 +50,15 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 		Price:       input.Price,
 		Stock:       input.Stock,
 		ImageURL:    input.ImageURL,
-		SellerID:    sellerID,
+		SellerID:    sellerID, 
 	}
 
 	if err := h.DB.Create(&product).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan produk"})
 	}
-
 	return c.Status(fiber.StatusCreated).JSON(product)
 }
+
 
 func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 	var products []models.Product
@@ -76,23 +75,19 @@ func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 			Price:       p.Price,
 			Stock:       p.Stock,
 			ImageURL:    p.ImageURL,
-			Seller: UserResponse{
+			Seller: UserResponse{ 
 				ID:       p.Seller.ID,
 				Username: p.Seller.Username,
 				Email:    p.Seller.Email,
 			},
 		})
 	}
-
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+
 func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
 	id := c.Params("id")
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID produk tidak boleh kosong"})
-	}
-    
 	var product models.Product
 
 	if err := h.DB.Preload("Seller").First(&product, id).Error; err != nil {
@@ -115,6 +110,86 @@ func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
 			Email:    product.Seller.Email,
 		},
 	}
+	return c.Status(fiber.StatusOK).JSON(response)
+}
 
+func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) }
+	role, _ := c.Locals("user_role").(string)
+	productID := c.Params("id")
+
+	var product models.Product
+	if err := h.DB.First(&product, productID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Produk tidak ditemukan"})
+	}
+
+	if product.SellerID != userID && role != "admin" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden", "message": "Anda tidak punya izin untuk mengedit produk ini"})
+	}
+
+	input := new(CreateProductInput)
+	if err := c.BodyParser(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Data request tidak valid"})
+	}
+
+	if err := h.DB.Model(&product).Updates(input).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengupdate produk"})
+	}
+	return c.Status(fiber.StatusOK).JSON(product)
+}
+
+
+func (h *ProductHandler) DeleteProduct(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) }
+	role, _ := c.Locals("user_role").(string)
+	productID := c.Params("id")
+
+	var product models.Product
+	if err := h.DB.First(&product, productID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Produk tidak ditemukan"})
+	}
+
+	if product.SellerID != userID && role != "admin" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden", "message": "Anda tidak punya izin untuk menghapus produk ini"})
+	}
+
+	if err := h.DB.Delete(&product).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menghapus produk"})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Produk berhasil dihapus"})
+}
+
+
+func (h *ProductHandler) GetMyProducts(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) }
+
+	var products []models.Product
+	if err := h.DB.Where("seller_id = ?", userID).Find(&products).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data produk"})
+	}
+	type MyProductResponse struct {
+		ID          uint    `json:"id"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Price       float64 `json:"price"`
+		Stock       int     `json:"stock"`
+		ImageURL    string  `json:"image_url"`
+	}
+
+	var response []MyProductResponse
+	for _, p := range products {
+		response = append(response, MyProductResponse{
+			ID:          p.ID,
+			Name:        p.Name,
+			Description: p.Description,
+			Price:       p.Price,
+			Stock:       p.Stock,
+			ImageURL:    p.ImageURL,
+		})
+	}
+	
 	return c.Status(fiber.StatusOK).JSON(response)
 }

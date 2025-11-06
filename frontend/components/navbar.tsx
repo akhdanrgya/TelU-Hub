@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -73,15 +73,17 @@ export const Navbar = () => {
         ) : isAuthenticated ? (
           <>
             <NavbarItem className="hidden md:flex">
-              <div className="flex items-center gap-4"> {/* Kasih gap dikit */}
-                
+              <div className="flex items-center gap-4">
+                {" "}
+                {/* Kasih gap dikit */}
                 {/* --- Tombol Keranjang --- */}
                 <Button variant="light" isIconOnly as={NextLink} href="/cart">
-                  <Badge content="3" color="danger"> {/* Nanti '3' ganti state */}
+                  <Badge content="3" color="danger">
+                    {" "}
+                    {/* Nanti '3' ganti state */}
                     <FiShoppingCart size={20} />
                   </Badge>
                 </Button>
-
                 {/* --- INI DIA DROPDOWN PROFIL-NYA --- */}
                 <Dropdown placement="bottom-end">
                   <DropdownTrigger>
@@ -91,12 +93,11 @@ export const Navbar = () => {
                       className="transition-transform"
                       color="primary"
                       size="sm"
-                      src={user?.profile_image_url} 
+                      src={user?.profile_image_url}
                       name={user?.username.charAt(0).toUpperCase()}
                     />
                   </DropdownTrigger>
                   <DropdownMenu aria-label="Profile Actions" variant="flat">
-                    
                     <DropdownItem
                       key="profile-info"
                       className="h-14 gap-2"
@@ -105,22 +106,46 @@ export const Navbar = () => {
                       <p className="font-semibold">Signed in as</p>
                       <p className="font-semibold">{user?.email}</p>
                     </DropdownItem>
-                    
+
                     <DropdownItem key="profile" as={NextLink} href="/profile">
                       Profil Saya
                     </DropdownItem>
-                    
+
                     <DropdownItem key="orders" as={NextLink} href="/orders">
                       Pesanan Saya
                     </DropdownItem>
-                    
-                    <DropdownItem key="logout" color="danger" onPress={logout}>
+
+
+                    {user?.role === "seller" || user?.role === "admin" ? (
+                      <DropdownItem
+                        key="seller-dashboard"
+                        as={NextLink}
+                        href="/seller/dashboard"
+                        className="text-primary"
+                        color="primary"
+                      >
+                        Seller Dashboard
+                      </DropdownItem>
+                    ) : null}
+
+                    {user?.role === "admin" ? (
+                      <DropdownItem
+                        key="admin-dashboard"
+                        as={NextLink}
+                        href="/admin/dashboard"
+                        className="text-secondary"
+                        color="secondary"
+                      >
+                        Admin Dashboard
+                      </DropdownItem>
+                    ) : null}
+
+                    <DropdownItem key="logout" color="danger" className="text-danger" onPress={logout}>
                       Logout
                     </DropdownItem>
-                    
+
                   </DropdownMenu>
                 </Dropdown>
-
               </div>
             </NavbarItem>
           </>
