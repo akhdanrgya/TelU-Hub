@@ -162,3 +162,42 @@ func (h *AuthHandler) GetUserData(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(response)
 }
+
+func (h *AuthHandler) PromoteUser(c *fiber.Ctx) error {
+	targetUserID := c.Params("id")
+	if targetUserID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID user target tidak boleh kosong"})
+	}
+
+	type PromoteInput struct {
+		Role string `json:"role" validate:"required"`
+	}
+	input := new(PromoteInput)
+	if err := c.BodyParser(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Body request tidak valid"})
+	}
+
+	if input.Role != "seller" && input.Role != "user" && input.Role != "admin" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Role tidak valid. Hanya boleh 'user', 'seller', atau 'admin'"})
+	}
+
+	var user models.User
+	if err := h.DB.First(&user, targetUserID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User target tidak ditemukan"})
+	}
+
+	user.Role = input.Role
+	if err := h.DB.Save(&user).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengupdate role user"})
+	}
+
+	response := UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Role:     user.Role,
+		ProfileImageURL: user.ProfileImageURL,
+	}
+	
+	return c.Status(fiber.StatusOK).JSON(response)
+}

@@ -25,7 +25,14 @@ func InitDB() {
 	log.Println("Database connection successful! 🐘")
 
 	log.Println("Menjalankan Auto Migration")
-	err = DB.AutoMigrate(&models.User{})
+	err = DB.AutoMigrate(
+		&models.User{}, 
+		&models.Product{},
+		&models.Cart{},
+		&models.CartItem{},
+		&models.Order{},
+		&models.OrderItem{},
+	)
 	if err != nil {
 		log.Fatalf("ERROR: Gagal nge-migrate tabel User: %v", err)
 	}

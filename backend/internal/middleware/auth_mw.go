@@ -51,3 +51,26 @@ func Protected() fiber.Handler {
 		return c.Next()
 	}
 }
+
+func RoleRequired(allowedRoles ...string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		role, ok := c.Locals("user_role").(string)
+		if !ok {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Forbidden",
+				"message": "Role user tidak terdefinisi",
+			})
+		}
+
+		for _, allowedRole := range allowedRoles {
+			if role == allowedRole {
+				return c.Next()
+			}
+		}
+
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "Forbidden",
+			"message": "Anda tidak punya izin untuk mengakses sumber daya ini",
+		})
+	}
+}
