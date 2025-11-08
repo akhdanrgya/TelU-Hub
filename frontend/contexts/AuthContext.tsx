@@ -138,17 +138,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const updateCartQuantity = async (cartItemId: number, newQuantity: number): Promise<boolean> => {
-    if (newQuantity <= 0) { // Kalo 0, panggil 'remove' aja
+    if (newQuantity <= 0) {
       return removeCartItem(cartItemId);
     }
     
     setLoadingCart(true);
     try {
-      // Panggil API PUT
       await api.put(`/cart/items/${cartItemId}`, {
         quantity: newQuantity,
       });
-      await fetchCart(); // Refresh cart
+      await fetchCart();
       return true;
     } catch (error: any) {
       alert(error.response?.data?.error || "Gagal update quantity");
@@ -158,13 +157,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // 3. 🚨 FUNGSI BARU: REMOVE ITEM
   const removeCartItem = async (cartItemId: number): Promise<boolean> => {
     setLoadingCart(true);
     try {
-      // Panggil API DELETE
       await api.delete(`/cart/items/${cartItemId}`);
-      await fetchCart(); // Refresh cart
+      await fetchCart();
       return true;
     } catch (error: any) {
       alert(error.response?.data?.error || "Gagal hapus item");

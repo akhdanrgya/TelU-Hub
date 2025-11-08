@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"log"
+
 	"github.com/akhdanrgya/telu-hub/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -45,20 +47,32 @@ func (h *CartHandler) GetCart(c *fiber.Ctx) error {
 
 	var cart models.Cart
 	err := h.DB.Preload("CartItems.Product").Where("user_id = ?", userID).First(&cart).Error
+	
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Keranjang tidak ditemukan"})
+			log.Printf("Keranjang buat User ID %d gak ketemu, bikin baru...", userID)
+			
+			newCart := models.Cart{
+				UserID:    userID,
+				CartItems: []models.CartItem{},
+			}
+			if errCreate := h.DB.Create(&newCart).Error; errCreate != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat keranjang baru"})
+			}
+			
+			cart = newCart 
+		
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil keranjang"})
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil keranjang"})
 	}
-
 	cartItemsResponse := []CartItemResponse{}
 	for _, item := range cart.CartItems {
 		cartItemsResponse = append(cartItemsResponse, CartItemResponse{
 			ID:        item.ID,
 			Quantity:  item.Quantity,
 			ProductID: item.ProductID,
-			Product: CartProductResponse{
+			Product: CartProductResponse{ 
 				ID:       item.Product.ID,
 				Name:     item.Product.Name,
 				Slug:     item.Product.Slug,
@@ -71,7 +85,7 @@ func (h *CartHandler) GetCart(c *fiber.Ctx) error {
 	response := CartResponse{
 		ID:        cart.ID,
 		UserID:    cart.UserID,
-		CartItems: cartItemsResponse,
+		CartItems: cartItemsResponse, 
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)

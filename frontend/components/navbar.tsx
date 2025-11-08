@@ -37,7 +37,6 @@ export const Navbar = () => {
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
-      {/* ... (Navbar Kiri lo udah bener) ... */}
       <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
         <NavbarBrand as="li" className="gap-3 max-w-fit">
           <NextLink className="flex justify-start items-center gap-1" href="/">
@@ -183,7 +182,6 @@ export const Navbar = () => {
                     />
                   </DropdownTrigger>
                   <DropdownMenu aria-label="Profile Actions" variant="flat">
-                    {/* ... (Semua DropdownItem profil lo udah bener pake ? : null) ... */}
                     <DropdownItem
                       key="profile-info"
                       className="h-14 gap-2"
@@ -230,7 +228,6 @@ export const Navbar = () => {
           </>
         ) : (
           <NavbarItem className="hidden md:flex gap-2">
-            {/* ... (Tombol Login/Register lo udah bener) ... */}
             <Button
               as={NextLink}
               href="/login"
@@ -266,7 +263,6 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarMenu>
-        {/* ... (Menu Mobile lo udah bener) ... */}
         <div className="mx-4 mt-2 flex flex-col gap-2">
           {siteConfig.navMenuItems.map((item, index) => (
             <NavbarMenuItem key={`${item}-${index}`}>
