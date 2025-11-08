@@ -20,13 +20,14 @@ type User struct {
 type Product struct {
 	gorm.Model
 	Name        string  `gorm:"size:255;not null"`
+    Slug        string  `gorm:"size:255;uniqueIndex;not null"`
 	Description string  `gorm:"type:text"`
 	Price       float64 `gorm:"not null"`
 	Stock       int     `gorm:"not null;default:0"`
 	ImageURL    string  `gorm:"size:255"`
 
 	SellerID uint `gorm:"not null"`
-	Seller *User `gorm:"foreignKey:SellerID"`
+	Seller   *User `gorm:"foreignKey:SellerID"`
 }
 
 

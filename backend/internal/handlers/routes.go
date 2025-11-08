@@ -35,7 +35,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 
 	products := api.Group("/products")
 		products.Get("/", productHandler.GetAllProducts)
-		products.Get("/:id", productHandler.GetProductByID)
+		products.Get("/:slug", productHandler.GetProductBySlug)
 		products.Post("/", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.CreateProduct)
 		products.Put("/:id", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.UpdateProduct)
 		products.Delete("/:id", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.DeleteProduct)
