@@ -128,7 +128,7 @@ func (h *ProductHandler) GetProductBySlug(c *fiber.Ctx) error {
 func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
 	id := c.Params("id") 
 	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Slug produk tidak boleh kosong"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID produk tidak boleh kosong"})
 	}
     
 	var product models.Product

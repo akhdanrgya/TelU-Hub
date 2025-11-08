@@ -28,3 +28,16 @@ export interface User {
   role:     string;
   profile_image_url?: string;
 }
+
+export interface CartItem {
+  id:         number;
+  product_id: number;
+  quantity:   number;
+  Product:    Product;
+}
+
+export interface Cart {
+  id:         number;
+  user_id:    number;
+  CartItems:  CartItem[];
+}

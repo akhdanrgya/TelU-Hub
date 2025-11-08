@@ -29,10 +29,15 @@ import { FiShoppingCart, FiUser } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Navbar = () => {
-  const { isAuthenticated, user, logout, loading } = useAuth();
+  const { isAuthenticated, user, logout, loading, cart } = useAuth();
+
+  const totalCartItems = cart?.CartItems
+    ? cart.CartItems.reduce((total, item) => total + item.quantity, 0)
+    : 0;
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
+      {/* ... (Navbar Kiri lo udah bener) ... */}
       <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
         <NavbarBrand as="li" className="gap-3 max-w-fit">
           <NextLink className="flex justify-start items-center gap-1" href="/">
@@ -74,17 +79,97 @@ export const Navbar = () => {
           <>
             <NavbarItem className="hidden md:flex">
               <div className="flex items-center gap-4">
-                {" "}
-                {/* Kasih gap dikit */}
-                {/* --- Tombol Keranjang --- */}
-                <Button variant="light" isIconOnly as={NextLink} href="/cart">
-                  <Badge content="3" color="danger">
-                    {" "}
-                    {/* Nanti '3' ganti state */}
-                    <FiShoppingCart size={20} />
-                  </Badge>
-                </Button>
-                {/* --- INI DIA DROPDOWN PROFIL-NYA --- */}
+                <Dropdown placement="bottom-end">
+                  <DropdownTrigger>
+                    <Button variant="light" isIconOnly>
+                      <Badge
+                        content={totalCartItems}
+                        color="danger"
+                        isInvisible={totalCartItems === 0}
+                      >
+                        <FiShoppingCart size={20} />
+                      </Badge>
+                    </Button>
+                  </DropdownTrigger>
+
+                  <DropdownMenu
+                    aria-label="Cart Popup"
+                    variant="flat"
+                    className="min-w-[350px]"
+                  >
+                    <DropdownItem
+                      key="header"
+                      isReadOnly
+                      className="font-bold text-lg"
+                    >
+                      Keranjang Saya ({totalCartItems} item)
+                    </DropdownItem>
+
+                    {cart?.CartItems && cart.CartItems.length > 0 ? (
+                      <>
+                        {cart.CartItems.map((item) => (
+                          <DropdownItem
+                            key={item.id}
+                            as={NextLink}
+                            href={`/products/${item.Product.slug}`}
+                            className="h-auto py-2"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Avatar
+                                src={item.Product.image_url}
+                                name={item.Product.name ? item.Product.name.charAt(0) : '?'}
+                                size="md"
+                              />
+                              <div className="flex-grow">
+                                <p className="font-semibold truncate">
+                                  {item.Product.name}
+                                </p>
+                                <p className="text-xs text-default-500">
+                                  Qty: {item.quantity}
+                                </p>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="font-semibold text-primary">
+                                  Rp{" "}
+                                  {(
+                                    item.quantity * item.Product.price
+                                  ).toLocaleString("id-ID")}
+                                </p>
+                                <p className="text-xs text-default-500">
+                                  @ Rp{" "}
+                                  {item.Product.price.toLocaleString("id-ID")}
+                                </p>
+                              </div>
+                            </div>
+                          </DropdownItem>
+                        ))}
+                      </>
+                    ) : (
+                      <DropdownItem
+                        key="empty"
+                        isReadOnly
+                        className="text-center text-default-500 py-4"
+                      >
+                        Keranjang mu kosong
+                      </DropdownItem>
+                    )}
+
+                    {cart?.CartItems && cart.CartItems.length > 0 ? (
+                      <DropdownItem key="footer" className="p-0 mt-2">
+                        <Button
+                          as={NextLink}
+                          href="/cart"
+                          color="primary"
+                          className="w-full"
+                          radius="none"
+                        >
+                          Lihat Keranjang & Checkout
+                        </Button>
+                      </DropdownItem>
+                    ) : null}
+                  </DropdownMenu>
+                </Dropdown>
+
                 <Dropdown placement="bottom-end">
                   <DropdownTrigger>
                     <Avatar
@@ -98,6 +183,7 @@ export const Navbar = () => {
                     />
                   </DropdownTrigger>
                   <DropdownMenu aria-label="Profile Actions" variant="flat">
+                    {/* ... (Semua DropdownItem profil lo udah bener pake ? : null) ... */}
                     <DropdownItem
                       key="profile-info"
                       className="h-14 gap-2"
@@ -106,17 +192,13 @@ export const Navbar = () => {
                       <p className="font-semibold">Signed in as</p>
                       <p className="font-semibold">{user?.email}</p>
                     </DropdownItem>
-
                     <DropdownItem key="profile" as={NextLink} href="/profile">
                       Profil Saya
                     </DropdownItem>
-
                     <DropdownItem key="orders" as={NextLink} href="/orders">
                       Pesanan Saya
                     </DropdownItem>
-
-
-                    {user?.role === "seller" ? (
+                    {user?.role === "seller" || user?.role === "admin" ? (
                       <DropdownItem
                         key="seller-dashboard"
                         as={NextLink}
@@ -127,7 +209,6 @@ export const Navbar = () => {
                         Seller Dashboard
                       </DropdownItem>
                     ) : null}
-
                     {user?.role === "admin" ? (
                       <DropdownItem
                         key="admin-dashboard"
@@ -139,11 +220,9 @@ export const Navbar = () => {
                         Admin Dashboard
                       </DropdownItem>
                     ) : null}
-
-                    <DropdownItem key="logout" color="danger" className="text-danger" onPress={logout}>
+                    <DropdownItem key="logout" color="danger" onPress={logout}>
                       Logout
                     </DropdownItem>
-
                   </DropdownMenu>
                 </Dropdown>
               </div>
@@ -151,6 +230,7 @@ export const Navbar = () => {
           </>
         ) : (
           <NavbarItem className="hidden md:flex gap-2">
+            {/* ... (Tombol Login/Register lo udah bener) ... */}
             <Button
               as={NextLink}
               href="/login"
@@ -159,13 +239,14 @@ export const Navbar = () => {
             >
               Login
             </Button>
-            {/* <Button
+            <Button
               as={NextLink}
               href="/register"
-              variant="ghost"
+              variant="flat"
+              color="primary"
             >
               Register
-            </Button> */}
+            </Button>
           </NavbarItem>
         )}
       </NavbarContent>
@@ -173,12 +254,19 @@ export const Navbar = () => {
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
         <ThemeSwitch />
         <NextLink href="/cart">
-          <FiShoppingCart size={20} />
+          <Badge
+            content={totalCartItems}
+            color="danger"
+            isInvisible={totalCartItems === 0}
+          >
+            <FiShoppingCart size={20} />
+          </Badge>
         </NextLink>
         <NavbarMenuToggle />
       </NavbarContent>
 
       <NavbarMenu>
+        {/* ... (Menu Mobile lo udah bener) ... */}
         <div className="mx-4 mt-2 flex flex-col gap-2">
           {siteConfig.navMenuItems.map((item, index) => (
             <NavbarMenuItem key={`${item}-${index}`}>
@@ -196,7 +284,6 @@ export const Navbar = () => {
             </NavbarMenuItem>
           ))}
         </div>
-        {/* Tambah Logout di mobile menu juga kalo perlu */}
         {isAuthenticated && (
           <NavbarMenuItem>
             <Button

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation"; // 👈 Hook buat BACA URL
-import api from "@/libs/api"; // API client lo
-import { Product } from "@/types"; // Tipe data lo
+import { useParams } from "next/navigation";
+import api from "@/libs/api";
+import { Product } from "@/types";
 import { Spinner } from "@heroui/spinner";
 import NextImage from "next/image";
 import { Button } from "@heroui/button";
