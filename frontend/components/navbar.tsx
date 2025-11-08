@@ -116,7 +116,7 @@ export const Navbar = () => {
                     </DropdownItem>
 
 
-                    {user?.role === "seller" || user?.role === "admin" ? (
+                    {user?.role === "seller" ? (
                       <DropdownItem
                         key="seller-dashboard"
                         as={NextLink}

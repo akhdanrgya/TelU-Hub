@@ -31,6 +31,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 
 	admin := api.Group("/admin", middleware.Protected(), middleware.RoleRequired("admin"))
 		admin.Post("/promote/:id", authHandler.PromoteUser)
+		admin.Get("/users", authHandler.GetAllUsers)
 
 	products := api.Group("/products")
 		products.Get("/", productHandler.GetAllProducts)

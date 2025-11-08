@@ -19,3 +19,11 @@ export interface Product {
   image_url:   string; // backend ngirim 'image_url' (snake_case)
   seller:      SellerResponse;
 }
+
+export interface User {
+  id:       number;
+  username: string;
+  email:    string;
+  role:     string;
+  profile_image_url?: string;
+}

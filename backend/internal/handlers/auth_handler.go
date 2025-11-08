@@ -201,3 +201,23 @@ func (h *AuthHandler) PromoteUser(c *fiber.Ctx) error {
 	
 	return c.Status(fiber.StatusOK).JSON(response)
 }
+
+func (h *AuthHandler) GetAllUsers(c *fiber.Ctx) error {
+	var users []models.User
+	if err := h.DB.Omit("password").Find(&users).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data user"})
+	}
+
+	var response []UserResponse
+	for _, user := range users {
+		response = append(response, UserResponse{
+			ID:              user.ID,
+			Username:        user.Username,
+			Email:           user.Email,
+			Role:            user.Role,
+			ProfileImageURL: user.ProfileImageURL,
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
+}
