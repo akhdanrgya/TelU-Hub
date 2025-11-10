@@ -73,6 +73,12 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 			if item.Quantity > item.Product.Stock {
 				return fiber.NewError(fiber.StatusBadRequest, "Stok untuk "+item.Product.Name+" tidak cukup")
 			}
+
+			newStock := item.Product.Stock - item.Quantity
+			if err := tx.Model(&item.Product).Update("stock", newStock).Error; err != nil {
+				log.Printf("[CHECKOUT] Gagal update stok produk ID %d: %v", item.ProductID, err)
+				return fiber.NewError(fiber.StatusInternalServerError, "Gagal mengupdate stok produk")
+			}
 			
 			price := item.Product.Price
 			totalAmount += (float64(item.Quantity) * price)

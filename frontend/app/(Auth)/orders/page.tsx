@@ -84,14 +84,13 @@ const OrdersPage = () => {
   return (
     <div className="py-8">
       <h1 className="text-3xl font-bold mb-6">Riwayat Pesanan Saya</h1>
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         {orders.map((order) => (
           <NextLink
-            href={`/orders/${order.id}`} // 👈 Tuju ke URL dinamis
+            href={`/orders/${order.id}`}
             key={order.id}
             passHref
           >
-
             <Card key={order.id} className="w-full">
               <CardHeader className="flex justify-between items-center">
                 <div>
@@ -114,7 +113,6 @@ const OrdersPage = () => {
                   Tanggal Pesan: {formatDate(order.created_at)}
                 </p>
 
-                {/* Daftar item di order itu */}
                 {order.OrderItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-4">
                     <Avatar
