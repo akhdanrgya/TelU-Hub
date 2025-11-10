@@ -17,7 +17,7 @@ export interface Product {
   description: string;
   price:       number;
   stock:       number;
-  image_url:   string; // backend ngirim 'image_url' (snake_case)
+  image_url:   string;
   seller:      SellerResponse;
 }
 
@@ -40,4 +40,12 @@ export interface Cart {
   id:         number;
   user_id:    number;
   CartItems:  CartItem[];
+}
+
+export interface PublicProfile {
+  id:       number;
+  username: string;
+  role:     string;
+  profile_image_url?: string;
+  joined_at: string;
 }

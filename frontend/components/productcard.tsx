@@ -49,7 +49,7 @@ export const ProductCard = ({ product }: { product: Product }) => {
             dijual oleh:{" "}
             <Link
               as={NextLink}
-              href={`/seller/${product.seller.username}`}
+              href={`/profile/${product.seller.username}`}
               color="primary"
             >
               {product.seller.username}

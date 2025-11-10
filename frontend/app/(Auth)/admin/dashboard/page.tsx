@@ -24,6 +24,8 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
+import { Link } from "@heroui/link";
+import NextLink from "next/link";
 
 const AdminDashboardPage = () => {
   const { user: adminUser, loading: authLoading } = useAuth();
@@ -100,11 +102,11 @@ const AdminDashboardPage = () => {
 
       <Table aria-label="Tabel User">
         <TableHeader>
-            <TableColumn>ID</TableColumn>
-            <TableColumn>Username</TableColumn>
-            <TableColumn>Email</TableColumn>
-            <TableColumn>Role Sekarang</TableColumn>
-            <TableColumn>Aksi</TableColumn>
+          <TableColumn>ID</TableColumn>
+          <TableColumn>Username</TableColumn>
+          <TableColumn>Email</TableColumn>
+          <TableColumn>Role Sekarang</TableColumn>
+          <TableColumn>Aksi</TableColumn>
         </TableHeader>
         <TableBody
           items={users}
@@ -113,17 +115,20 @@ const AdminDashboardPage = () => {
           {(userItem) => (
             <TableRow key={userItem.id}>
               <TableCell>{userItem.id}</TableCell>
-              <TableCell>{userItem.username}</TableCell>
+              <TableCell>
+                <Link as={NextLink} href={`/profile/${userItem.username}`} size="sm" color="foreground">
+                  {userItem.username}
+                </Link>
+              </TableCell>
               <TableCell>{userItem.email}</TableCell>
               <TableCell>
                 <span
-                  className={`px-2 py-1 rounded text-xs font-bold ${
-                    userItem.role === "admin"
+                  className={`px-2 py-1 rounded text-xs font-bold ${userItem.role === "admin"
                       ? "bg-secondary text-secondary-foreground"
                       : userItem.role === "seller"
                         ? "bg-primary text-primary-foreground"
                         : "bg-default-200"
-                  }`}
+                    }`}
                 >
                   {userItem.role}
                 </span>

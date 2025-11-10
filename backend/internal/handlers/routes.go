@@ -15,6 +15,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	productHandler := NewProductHandler(db)
 	cartHandler := NewCartHandler(db)
 	uploadHandler := NewUploadHandler()
+	userHandler := NewUserHandler(db)
 
 
 	api := app.Group("/api/v1")
@@ -31,6 +32,8 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	me := api.Group("/me", middleware.Protected())
 		me.Get("/", authHandler.GetUserData)
 		me.Get("/products", productHandler.GetMyProducts)
+		me.Get("/", authHandler.GetUserData)
+		me.Put("/", userHandler.UpdateUserProfile)
 
 	admin := api.Group("/admin", middleware.Protected(), middleware.RoleRequired("admin"))
 		admin.Post("/promote/:id", authHandler.PromoteUser)
@@ -52,6 +55,8 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 		cart.Delete("/items/:id", cartHandler.RemoveCartItem)
 	
 	api.Post("/upload/image", uploadHandler.UploadImage)
+	api.Get("/users/:username", userHandler.GetUserPublicProfile)
+	api.Get("/users/:username/products", userHandler.GetUserProducts)
 
 	app.Get("/ws/chat/:channel_id", middleware.Protected(), websocket.New(func(c *websocket.Conn) {
 		log.Println("Koneksi WebSocket baru!")

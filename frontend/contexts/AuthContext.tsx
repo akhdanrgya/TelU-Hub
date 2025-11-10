@@ -18,6 +18,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loading: boolean;
+  refreshUser: () => Promise<void>;
 
   cart: Cart | null;
   loadingCart: boolean;
@@ -168,6 +169,35 @@ const logout = async () => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await api.get("/me");
+      setUser(response.data);
+      setIsAuthenticated(true);
+    } catch (err) {
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem("token");
+      delete api.defaults.headers.common['Authorization'];
+    }
+  };
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`; 
+        await refreshUser();
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setLoading(false);
+    };
+    checkAuthStatus();
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -178,6 +208,7 @@ const logout = async () => {
         loading,
         cart,
         loadingCart,
+        refreshUser,
         addToCart,
         updateCartQuantity,
         removeCartItem,

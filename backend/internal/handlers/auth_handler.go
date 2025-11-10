@@ -82,7 +82,6 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
-	// ... (input, parse, cari user, cek hash... UDAH BENER) ...
 	type LoginInput struct {
 		Email    string `json:"email" validate:"required,email"`
 		Password string `json:"password" validate:"required"`
@@ -96,18 +95,11 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	if !utils.CheckPasswordHash(input.Password, user.Password) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Email atau Password salah"})
 	}
-	
-	// Bikin Token (Udah bener)
+
 	tokenString, err := utils.GenerateToken(user.ID, user.Role)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat token"})
 	}
-
-	// ----------------------------------------------------
-	// ⚠️ PERUBAHAN DI SINI: HAPUS c.Cookie() ⚠️
-	// ----------------------------------------------------
-
-	// Balikin data user (Udah bener)
 	response := UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
@@ -118,7 +110,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	// 🚨 KIRIM TOKENNYA DI JSON 🚨
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Login berhasil",
-		"token":   tokenString, // <-- KIRIM DI SINI
+		"token":   tokenString,
 		"user":    response,
 	})
 }
