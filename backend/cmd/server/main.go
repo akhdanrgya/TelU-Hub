@@ -32,6 +32,8 @@ func main() {
 		AllowCredentials: true, 
 	}))
 
+	app.Static("/uploads", "./uploads");
+
 	handlers.SetupRoutes(app, db)
 
 	port := config.GetAppPort()
