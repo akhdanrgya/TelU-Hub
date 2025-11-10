@@ -22,6 +22,26 @@ type OrderHandler struct {
 	SnapClient snap.Client
 }
 
+type OrderProductResponse struct { // 👈 Ini BEDA sama 'CartProductResponse' (gak ada slug)
+	ID       uint    `json:"id"`
+	Name     string  `json:"name"`
+	Price    float64 `json:"price"` // Kita pake 'Price' aja, bukan 'PriceAtTime'
+	ImageURL string  `json:"image_url"`
+}
+type OrderItemResponse struct {
+	ID          uint                 `json:"id"`
+	Quantity    int                  `json:"quantity"`
+	PriceAtTime float64              `json:"price_at_time"`
+	Product     OrderProductResponse `json:"Product"`
+}
+type OrderResponse struct {
+	ID          uint                `json:"id"`
+	TotalAmount float64             `json:"total_amount"`
+	Status      string              `json:"status"`
+	CreatedAt   time.Time           `json:"created_at"` // 👈 Kita kasih tanggal
+	OrderItems  []OrderItemResponse `json:"OrderItems"`
+}
+
 func NewOrderHandler(db *gorm.DB) *OrderHandler {
 	var handler OrderHandler
 	handler.DB = db
@@ -195,4 +215,99 @@ func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Webhook received and processed"})
+}
+
+func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
+	userID, _ := c.Locals("user_id").(uint)
+
+	var orders []models.Order
+	// 1. Ambil semua order punya user ini
+	// 2. Preload Item-nya
+	// 3. Preload Produk di dalem Item-nya
+	// 4. Urutin dari yg paling baru (Descending)
+	err := h.DB.Preload("OrderItems.Product").
+		Where("user_id = ?", userID).
+		Order("created_at desc").
+		Find(&orders).Error
+		
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data order"})
+	}
+
+	// 2. Transformasi datanya jadi 'Response'
+	var response []OrderResponse
+	for _, order := range orders {
+		var orderItemsResponse []OrderItemResponse
+		for _, item := range order.OrderItems {
+			orderItemsResponse = append(orderItemsResponse, OrderItemResponse{
+				ID:          item.ID,
+				Quantity:    item.Quantity,
+				PriceAtTime: item.PriceAtTime,
+				Product: OrderProductResponse{
+					ID:       item.Product.ID,
+					Name:     item.Product.Name,
+					Price:    item.Product.Price, // Harga produk saat ini
+					ImageURL: item.Product.ImageURL,
+				},
+			})
+		}
+		
+		response = append(response, OrderResponse{
+			ID:          order.ID,
+			TotalAmount: order.TotalAmount,
+			Status:      order.Status,
+			CreatedAt:   order.CreatedAt,
+			OrderItems:  orderItemsResponse,
+		})
+	}
+
+	// 3. Jaring pengaman (biar gak 'null')
+	if response == nil {
+		response = make([]OrderResponse, 0)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+
+func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
+	userID, _ := c.Locals("user_id").(uint)
+	orderID := c.Params("id")
+	
+	var order models.Order
+	err := h.DB.Preload("OrderItems.Product").
+		Where("id = ? AND user_id = ?", orderID, userID).
+		First(&order).Error
+		
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Order tidak ditemukan"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data order"})
+	}
+
+	var orderItemsResponse []OrderItemResponse
+	for _, item := range order.OrderItems {
+		orderItemsResponse = append(orderItemsResponse, OrderItemResponse{
+			ID:          item.ID,
+			Quantity:    item.Quantity,
+			PriceAtTime: item.PriceAtTime,
+			Product: OrderProductResponse{
+				ID:       item.Product.ID,
+				Name:     item.Product.Name,
+				Price:    item.Product.Price,
+				ImageURL: item.Product.ImageURL,
+			},
+		})
+	}
+
+	response := OrderResponse{
+		ID:          order.ID,
+		TotalAmount: order.TotalAmount,
+		Status:      order.Status,
+		CreatedAt:   order.CreatedAt,
+		OrderItems:  orderItemsResponse,
+	}
+	
+	return c.Status(fiber.StatusOK).JSON(response)
 }

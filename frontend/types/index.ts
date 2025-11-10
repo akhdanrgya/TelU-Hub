@@ -49,3 +49,25 @@ export interface PublicProfile {
   profile_image_url?: string;
   joined_at: string;
 }
+
+export interface OrderProduct {
+  id:       number;
+  name:     string;
+  price:    number;
+  image_url: string;
+}
+
+export interface OrderItem {
+  id:           number;
+  quantity:     number;
+  price_at_time: number;
+  Product:      OrderProduct;
+}
+
+export interface Order {
+  id:           number;
+  total_amount: number;
+  status:       string;
+  created_at:   string;
+  OrderItems:   OrderItem[];
+}

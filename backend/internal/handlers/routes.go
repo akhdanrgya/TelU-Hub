@@ -65,6 +65,10 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	webhook := api.Group("/payments")
 	webhook.Post("/webhook", orderHandler.HandleWebhook)
 
+	orders := api.Group("/orders", middleware.Protected())
+		orders.Get("/", orderHandler.GetMyOrders) 
+		orders.Get("/:id", orderHandler.GetOrderByID)
+
 	app.Get("/ws/chat/:channel_id", middleware.Protected(), websocket.New(func(c *websocket.Conn) {
 		log.Println("Koneksi WebSocket baru!")
         c.WriteJSON(fiber.Map{"message": "Welcome to Chat!"})
