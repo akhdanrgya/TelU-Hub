@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/navbar";
 import { AuthProvider } from "@/contexts/AuthContext";
+import Footer from "@/components/footer";
 import React from "react";
 import Script from "next/script";
 
@@ -20,6 +21,7 @@ export default function PublicLayout({
         <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
           {children}
         </main>
+        <Footer/>
       </div>
     </AuthProvider>
   );

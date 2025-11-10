@@ -1,18 +1,21 @@
 package handlers
 
 import (
-	// "log"
+	"crypto/sha512"
+	"encoding/hex" 
+	"log"
 	"strconv"
+	"strings" 
 	"time"
 
-	// "github.com/akhdanrgya/telu-hub/internal/database"
+	"github.com/akhdanrgya/telu-hub/config"
 	"github.com/akhdanrgya/telu-hub/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/midtrans/midtrans-go"
-	// "github.com/midtrans/midtrans-go/coreapi"
 	"github.com/midtrans/midtrans-go/snap"
 	"gorm.io/gorm"
 )
+
 
 type OrderHandler struct {
 	DB *gorm.DB
@@ -22,22 +25,17 @@ type OrderHandler struct {
 func NewOrderHandler(db *gorm.DB) *OrderHandler {
 	var handler OrderHandler
 	handler.DB = db
-	handler.SnapClient.New(midtrans.ServerKey, midtrans.Sandbox) // Init Snap Client
+	handler.SnapClient.New(midtrans.ServerKey, midtrans.Sandbox)
 	return &handler
 }
 
-// --- CREATE ORDER & GET SNAP TOKEN ---
-// (POST /api/v1/checkout)
 func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 	userID, _ := c.Locals("user_id").(uint)
 
-	// 1. 🚨 Transaksi Database (PENTING!)
-	// Kita pake 'Transaction' biar aman. Kalo 1 gagal, semua di-rollback
 	var snapToken string
 	var orderIDGorm uint
 
 	err := h.DB.Transaction(func(tx *gorm.DB) error {
-		// 1a. Ambil keranjang & barang-barangnya
 		var cart models.Cart
 		if err := tx.Preload("CartItems.Product").Where("user_id = ?", userID).First(&cart).Error; err != nil {
 			return fiber.NewError(fiber.StatusNotFound, "Keranjang tidak ditemukan")
@@ -47,13 +45,11 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, "Keranjang kosong")
 		}
 
-		// 1b. Hitung Total & Siapin Order Items (SERVER-SIDE)
 		var totalAmount float64
 		var orderItems []models.OrderItem
 		var midtransItems []midtrans.ItemDetails
 
 		for _, item := range cart.CartItems {
-			// Cek stok (lagi)
 			if item.Quantity > item.Product.Stock {
 				return fiber.NewError(fiber.StatusBadRequest, "Stok untuk "+item.Product.Name+" tidak cukup")
 			}
@@ -61,14 +57,12 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 			price := item.Product.Price
 			totalAmount += (float64(item.Quantity) * price)
 
-			// Siapin buat dimasukin ke tabel 'order_items'
 			orderItems = append(orderItems, models.OrderItem{
 				ProductID:   item.ProductID,
 				Quantity:    item.Quantity,
-				PriceAtTime: price, // Catet harga pas dibeli
+				PriceAtTime: price,
 			})
 			
-			// Siapin buat dikirim ke Midtrans
 			midtransItems = append(midtransItems, midtrans.ItemDetails{
 				ID:    strconv.FormatUint(uint64(item.ProductID), 10),
 				Price: int64(price),
@@ -77,26 +71,24 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 			})
 		}
 
-		// 1c. Bikin Order (di tabel 'orders')
 		order := models.Order{
 			UserID:      userID,
 			TotalAmount: totalAmount,
-			Status:      "pending", // Status awal
-			OrderItems:  orderItems, // GORM pinter, ini bakal ke-create juga
+			Status:      "pending",
+			OrderItems:  orderItems,
 		}
 		if err := tx.Create(&order).Error; err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Gagal membuat order")
 		}
 
-		// 1d. Ambil ID user (buat Midtrans)
 		var user models.User
 		tx.First(&user, userID)
 
-		// 1e. Ngomong ke Midtrans (Minta Snap Token)
 		orderIDStr := "TELUHUB-" + strconv.FormatUint(uint64(order.ID), 10) + "-" + strconv.FormatInt(time.Now().Unix(), 10)
+		
 		snapReq := &snap.Request{
 			TransactionDetails: midtrans.TransactionDetails{
-				OrderID:  orderIDStr, // Order ID UNIK (kita + timestamp)
+				OrderID:  orderIDStr, 
 				GrossAmt: int64(totalAmount),
 			},
 			CustomerDetail: &midtrans.CustomerDetails{
@@ -111,7 +103,7 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusInternalServerError, "Gagal membuat transaksi Midtrans")
 		}
 		
-		snapToken = snapResp.Token 
+		snapToken = snapResp.Token
 		orderIDGorm = order.ID
 
 		if err := tx.Where("cart_id = ?", cart.ID).Delete(&models.CartItem{}).Error; err != nil {
@@ -127,17 +119,80 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
+	
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"snap_token": snapToken,
 		"order_id": orderIDGorm,
 	})
 }
 
+type MidtransNotification struct {
+	TransactionStatus string `json:"transaction_status"`
+	TransactionID     string `json:"transaction_id"`
+	OrderID           string `json:"order_id"`
+	StatusCode        string `json:"status_code"`
+	SignatureKey      string `json:"signature_key"`
+	PaymentType       string `json:"payment_type"`
+	GrossAmount       string `json:"gross_amount"`
+}
+
 func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
-	// ... (Ini logic buat nerima notifikasi dari Midtrans)
-	// ... (Lo harus cek 'transaction_status' == 'settlement')
-	// ... (Terus update order di DB lo jadi 'paid')
-	// ... (Ini kompleks, kita skip dulu)
+	var notification MidtransNotification
 	
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Webhook diterima"})
+	if err := c.BodyParser(&notification); err != nil {
+		log.Printf("[WEBHOOK] 400 Bad Request: Gagal parse body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse request"})
+	}
+
+	serverKey := config.GetMidtransServerKey()
+	strToHash := notification.OrderID + notification.StatusCode + notification.GrossAmount + serverKey
+	hasher := sha512.New()
+	hasher.Write([]byte(strToHash))
+	ourHash := hex.EncodeToString(hasher.Sum(nil))
+	if ourHash != notification.SignatureKey {
+		log.Printf("[WEBHOOK] 401 Unauthorized: Signature key salah!")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid signature"})
+	}
+
+	if !strings.HasPrefix(notification.OrderID, "TELUHUB-") {
+		log.Printf("[WEBHOOK] INFO: Notifikasi Tes (OrderID: %s) diterima dan di-skip.", notification.OrderID)
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Webhook Test Received and Skipped"})
+	}
+
+	log.Printf("[WEBHOOK] 200 OK: Notifikasi ASLI diterima untuk Order ID: %s, Status: %s", notification.OrderID, notification.TransactionStatus)
+	
+	orderIDParts := strings.Split(notification.OrderID, "-")
+	if len(orderIDParts) < 3 {
+		log.Printf("[WEBHOOK] 400 Bad Request: Format Order ID asli salah: %s", notification.OrderID)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid Order ID format"})
+	}
+	
+	realOrderID, err := strconv.ParseUint(orderIDParts[1], 10, 64) 
+	if err != nil {
+		log.Printf("[WEBHOOK] 400 Bad Request: Gagal parse Order ID asli: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid Order ID"})
+	}
+
+	var order models.Order
+	if err := h.DB.First(&order, realOrderID).Error; err != nil {
+		log.Printf("[WEBHOOK] 404 Not Found: Order %d tidak ditemukan di DB", realOrderID)
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Order not found"})
+	}
+
+	if notification.TransactionStatus == "settlement" || notification.TransactionStatus == "capture" {
+		order.Status = "paid" 
+		if err := h.DB.Save(&order).Error; err != nil {
+			log.Printf("[WEBHOOK] 500 Server Error: Gagal update status order %d: %v", realOrderID, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "DB update failed"})
+		}
+		log.Printf("[WEBHOOK] SUKSES: Order %d statusnya di-update jadi 'paid'", realOrderID)
+	}
+
+	if notification.TransactionStatus == "expire" || notification.TransactionStatus == "failure" || notification.TransactionStatus == "deny" {
+		order.Status = "failed"
+		h.DB.Save(&order)
+		log.Printf("[WEBHOOK] INFO: Order %d statusnya di-update jadi 'failed'", realOrderID)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Webhook received and processed"})
 }
