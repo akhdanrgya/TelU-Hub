@@ -6,10 +6,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/midtrans/midtrans-go"
 
 	"github.com/akhdanrgya/telu-hub/config"
 	"github.com/akhdanrgya/telu-hub/internal/database"
 	"github.com/akhdanrgya/telu-hub/internal/handlers"
+	
 )
 
 func main() {
@@ -17,6 +19,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("ERROR: Gagal nge-load config: %v", err)
 	}
+
+	midtrans.ServerKey = config.GetMidtransServerKey()
+    midtrans.ClientKey = config.GetMidtransClientKey()
+    midtrans.Environment = midtrans.Sandbox
 
 	database.InitDB()
 	db := database.DB

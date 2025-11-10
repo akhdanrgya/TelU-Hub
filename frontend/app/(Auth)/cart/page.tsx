@@ -1,13 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spinner } from "@heroui/spinner";
 import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
 import { Avatar } from "@heroui/avatar";
 import NextLink from "next/link";
-import { FiTrash2, FiPlus, FiMinus } from "react-icons/fi"; // 👈 Icon baru
+import { FiTrash2, FiPlus, FiMinus } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import api from "@/libs/api";
+
+declare global {
+  interface Window {
+    snap: any;
+  }
+}
 
 const CartPage = () => {
   const {
@@ -16,15 +24,56 @@ const CartPage = () => {
     loadingCart,
     updateCartQuantity,
     removeCartItem,
+    fetchCart
   } = useAuth();
 
   const subtotal = cart?.CartItems
     ? cart.CartItems.reduce(
-        (total, item) => total + item.quantity * item.Product.price,
-        0
-      )
+      (total, item) => total + item.quantity * item.Product.price,
+      0
+    )
     : 0;
   const total = subtotal;
+
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const router = useRouter();
+
+const handleCheckout = async () => {
+    setCheckoutLoading(true);
+    
+    try {
+      const response = await api.post("/checkout", {});
+      const { snap_token, order_id } = response.data;
+      
+      window.snap.pay(snap_token, {
+        onSuccess: (result: any) => {
+          console.log("Pembayaran Sukses!", result);
+          router.push(`/orders/${order_id}`); 
+          setCheckoutLoading(false); 
+        },
+        onPending: (result: any) => {
+          console.log("Pembayaran Pending", result);
+          router.push(`/orders/${order_id}`);
+          setCheckoutLoading(false); 
+        },
+        onError: (error: any) => {
+          console.error("Pembayaran Error", error);
+          alert("Pembayaran Gagal");
+          setCheckoutLoading(false); 
+        },
+        onClose: () => {
+          console.log("Popup Midtrans ditutup");
+          setCheckoutLoading(false);
+        }
+      });
+      
+    } catch (err) {
+      console.error(err);
+      alert("Gagal membuat order (API Error)");
+      setCheckoutLoading(false); 
+    } 
+  };
+
   if (authLoading) {
     return <div className="text-center p-10"><Spinner size="lg" /></div>;
   }
@@ -46,9 +95,9 @@ const CartPage = () => {
   return (
     <div className="py-8">
       <h1 className="text-3xl font-bold mb-6">Keranjang Belanja</h1>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         <div className="lg:col-span-2 space-y-4">
           {cart.CartItems.map((item) => (
             <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg bg-content1">
@@ -66,8 +115,7 @@ const CartPage = () => {
                   Rp {item.Product.price.toLocaleString("id-ID")}
                 </p>
               </div>
-              
-              {/* Tombol +/- */}
+
               <div className="flex items-center gap-2">
                 <Button
                   isIconOnly
@@ -78,29 +126,26 @@ const CartPage = () => {
                 >
                   <FiMinus />
                 </Button>
-                
+
                 <span className="w-10 text-center font-bold">{item.quantity}</span>
-                
+
                 <Button
                   isIconOnly
                   size="sm"
                   variant="flat"
-                  // Panggil fungsi 'update'
                   onPress={() => updateCartQuantity(item.id, item.quantity + 1)}
                   isLoading={loadingCart}
                 >
                   <FiPlus />
                 </Button>
               </div>
-              
-              {/* Total per Item */}
+
               <div className="w-32 text-right">
                 <p className="font-bold text-lg">
                   Rp {(item.quantity * item.Product.price).toLocaleString("id-ID")}
                 </p>
               </div>
 
-              {/* Tombol Hapus */}
               <Button
                 isIconOnly
                 size="sm"
@@ -115,7 +160,6 @@ const CartPage = () => {
           ))}
         </div>
 
-        {/* --- KOLOM KANAN (Ringkasan Belanja) --- */}
         <div className="lg:col-span-1">
           <div className="p-6 border rounded-lg bg-content1 sticky top-24">
             <h2 className="text-2xl font-bold mb-4">Ringkasan</h2>
@@ -134,13 +178,20 @@ const CartPage = () => {
                 <p>Rp {total.toLocaleString("id-ID")}</p>
               </div>
             </div>
-            
-            <Button color="primary" className="w-full mt-6" size="lg">
-              Lanjut ke Checkout
+
+            <Button
+              color="primary"
+              className="w-full mt-6"
+              size="lg"
+              onPress={handleCheckout}
+              isLoading={checkoutLoading}
+              disabled={checkoutLoading || loadingCart || !cart || cart.CartItems.length === 0}
+            >
+              {checkoutLoading ? "Memproses..." : "Lanjut ke Checkout"}
             </Button>
           </div>
         </div>
-        
+
       </div>
     </div>
   );

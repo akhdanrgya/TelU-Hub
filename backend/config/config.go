@@ -8,19 +8,20 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 type configStruct struct {
-	AppPort     string
-	DBHost      string
-	DBPort      string
-	DBUser      string
-	DBPassword  string
-	DBName      string
-	DBSSLMode   string
-	JWTSecret   string
+	AppPort           string
+	DBHost            string
+	DBPort            string
+	DBUser            string
+	DBPassword        string
+	DBName            string
+	DBSSLMode         string
+	JWTSecret         string
+	MidtransServerKey string
+	MidtransClientKey string
 }
-var Config *configStruct
 
+var Config *configStruct
 
 func LoadConfig() error {
 
@@ -37,7 +38,8 @@ func LoadConfig() error {
 	dbName := os.Getenv("DB_NAME")
 	dbSSLMode := os.Getenv("DB_SSLMODE")
 	jwtSecret := os.Getenv("JWT_SECRET")
-
+	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
+	clientKey := os.Getenv("MIDTRANS_CLIENT_KEY")
 
 	if appPort == "" {
 		appPort = ":8080"
@@ -66,14 +68,16 @@ func LoadConfig() error {
 	}
 
 	Config = &configStruct{
-		AppPort:     appPort,
-		DBHost:      dbHost,
-		DBPort:      dbPort,
-		DBUser:      dbUser,
-		DBPassword:  dbPass,
-		DBName:      dbName,
-		DBSSLMode:   dbSSLMode,
-		JWTSecret:   jwtSecret,
+		AppPort:           appPort,
+		DBHost:            dbHost,
+		DBPort:            dbPort,
+		DBUser:            dbUser,
+		DBPassword:        dbPass,
+		DBName:            dbName,
+		DBSSLMode:         dbSSLMode,
+		JWTSecret:         jwtSecret,
+		MidtransServerKey: serverKey,
+		MidtransClientKey: clientKey,
 	}
 
 	return nil
@@ -97,7 +101,6 @@ func GetDBConnectionString() string {
 	if Config == nil {
 		log.Fatal("Config belom di-load!")
 	}
-
 	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		Config.DBHost,
 		Config.DBUser,
@@ -106,4 +109,13 @@ func GetDBConnectionString() string {
 		Config.DBPort,
 		Config.DBSSLMode,
 	)
+}
+
+func GetMidtransServerKey() string {
+    if Config == nil { log.Fatal() }
+    return Config.MidtransServerKey
+}
+func GetMidtransClientKey() string {
+    if Config == nil { log.Fatal() }
+    return Config.MidtransClientKey
 }

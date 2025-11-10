@@ -19,6 +19,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   loading: boolean;
   refreshUser: () => Promise<void>;
+  fetchCart: () => Promise<void>;
 
   cart: Cart | null;
   loadingCart: boolean;
@@ -212,6 +213,7 @@ const logout = async () => {
         addToCart,
         updateCartQuantity,
         removeCartItem,
+        fetchCart
       }}
     >
       {children}
