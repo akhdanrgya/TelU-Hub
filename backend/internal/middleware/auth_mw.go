@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"log"
+	"strings"
 
 	"github.com/akhdanrgya/telu-hub/config"
 	"github.com/akhdanrgya/telu-hub/internal/utils"
@@ -11,15 +12,26 @@ import (
 
 func Protected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		tokenString := c.Cookies("token")
-
-		if tokenString == "" {
-			log.Println("Middleware Error: Cookie 'token' tidak ditemukan")
+		authHeader := c.Get("Authorization")
+		
+		if authHeader == "" {
+			log.Println("Middleware Error: Header Authorization kosong")
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error":   "Unauthorized",
-				"message": "Token tidak ditemukan, silakan login",
+				"error": "Unauthorized",
+				"message": "Token tidak ditemukan (Header)",
 			})
 		}
+
+		tokenParts := strings.Split(authHeader, " ")
+		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+			log.Println("Middleware Error: Format token salah, bukan 'Bearer <token>'")
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Unauthorized",
+				"message": "Format token tidak valid",
+			})
+		}
+		
+		tokenString := tokenParts[1]
 
 		claims := &utils.JWTClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {

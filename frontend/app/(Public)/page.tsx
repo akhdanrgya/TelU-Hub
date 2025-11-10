@@ -22,7 +22,7 @@ const HomePage = () => {
 
         const response = await api.get("/products");
 
-        setProducts(response.data);
+        setProducts(response.data || []);
       } catch (err) {
         console.error("Gagal fetch produk:", err);
         setError("Gagal memuat produk. Coba refresh halaman.");

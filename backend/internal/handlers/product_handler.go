@@ -88,6 +88,11 @@ func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 			},
 		})
 	}
+
+	if response == nil {
+		response = make([]ProductResponse, 0)
+	}
+
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
@@ -236,6 +241,10 @@ func (h *ProductHandler) GetMyProducts(c *fiber.Ctx) error {
 			Stock:       p.Stock,
 			ImageURL:    p.ImageURL,
 		})
+	}
+
+	if response == nil {
+		response = make([]MyProductResponse, 0)
 	}
 	
 	return c.Status(fiber.StatusOK).JSON(response)

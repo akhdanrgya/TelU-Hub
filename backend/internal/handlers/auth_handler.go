@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"log"
-	"time"
 
 	"github.com/akhdanrgya/telu-hub/internal/models"
 	"github.com/akhdanrgya/telu-hub/internal/utils"
@@ -83,40 +82,32 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
+	// ... (input, parse, cari user, cek hash... UDAH BENER) ...
 	type LoginInput struct {
 		Email    string `json:"email" validate:"required,email"`
 		Password string `json:"password" validate:"required"`
 	}
-	
 	input := new(LoginInput)
-
-	if err := c.BodyParser(input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Data request tidak valid"})
-	}
-
+	if err := c.BodyParser(input); err != nil { /*... error ...*/ }
 	var user models.User
 	if err := h.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Email atau Password salah"})
 	}
-
 	if !utils.CheckPasswordHash(input.Password, user.Password) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Email atau Password salah"})
 	}
-
+	
+	// Bikin Token (Udah bener)
 	tokenString, err := utils.GenerateToken(user.ID, user.Role)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat token"})
 	}
 
-	c.Cookie(&fiber.Cookie{
-		Name:     "token",
-		Value:    tokenString,
-		Expires:  time.Now().Add(72 * time.Hour),
-		HTTPOnly: true, 
-		Secure:   false, 
-		SameSite: "Lax", 
-	})
+	// ----------------------------------------------------
+	// ⚠️ PERUBAHAN DI SINI: HAPUS c.Cookie() ⚠️
+	// ----------------------------------------------------
 
+	// Balikin data user (Udah bener)
 	response := UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
@@ -124,20 +115,16 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Role:     user.Role,
 	}
 
-	return c.Status(fiber.StatusOK).JSON(response)
+	// 🚨 KIRIM TOKENNYA DI JSON 🚨
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Login berhasil",
+		"token":   tokenString, // <-- KIRIM DI SINI
+		"user":    response,
+	})
 }
 
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
-	c.Cookie(&fiber.Cookie{
-		Name:     "token",
-		Value:    "",
-		Expires:  time.Now().Add(-time.Hour),
-		HTTPOnly: true,
-		Secure:   false, 
-		SameSite: "Lax",
-	})
-	
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Logout berhasil"})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Logout diproses"})
 }
 
 
@@ -217,6 +204,10 @@ func (h *AuthHandler) GetAllUsers(c *fiber.Ctx) error {
 			Role:            user.Role,
 			ProfileImageURL: user.ProfileImageURL,
 		})
+	}
+
+	if response == nil {
+		response = make([]UserResponse, 0)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)

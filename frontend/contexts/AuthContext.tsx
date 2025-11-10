@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, {
@@ -11,6 +10,7 @@ import React, {
 import api from "@/libs/api";
 import { useRouter } from "next/navigation";
 import { User, Cart } from "@/types";
+import axios from "axios";
 
 interface AuthContextType {
   user: User | null;
@@ -22,20 +22,13 @@ interface AuthContextType {
   cart: Cart | null;
   loadingCart: boolean;
   addToCart: (productId: number, quantity: number) => Promise<boolean>;
-
   updateCartQuantity: (cartItemId: number, newQuantity: number) => Promise<boolean>;
   removeCartItem: (cartItemId: number) => Promise<boolean>;
 }
 
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -48,7 +41,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const fetchCart = async () => {
     try {
       const response = await api.get("/cart");
-      setCart(response.data);
+      setCart(response.data || null);
     } catch (error) {
       console.error("Gagal fetch cart:", error);
       setCart(null);
@@ -57,34 +50,51 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     const checkAuthStatus = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get("/me");
-        setUser(response.data);
-        setIsAuthenticated(true);
+      const token = localStorage.getItem("token");
 
-        await fetchCart();
-      } catch (error) {
-        console.error("Gagal ngecek status auth:", error);
+      if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        try {
+          const response = await api.get("/me");
+          setUser(response.data);
+          setIsAuthenticated(true);
+        } catch (err) {
+          localStorage.removeItem("token");
+          delete api.defaults.headers.common['Authorization'];
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } else {
         setUser(null);
         setIsAuthenticated(false);
-        setCart(null);
-        router.push("/login")
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
-
     checkAuthStatus();
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log("User terautentikasi, mengambil data keranjang...");
+      fetchCart();
+    } else {
+      setCart(null);
+    }
+  }, [isAuthenticated]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
       const response = await api.post("/auth/login", { email, password });
-      setUser(response.data.user);
+
+      const { token, user } = response.data;
+      localStorage.setItem("token", token);
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      setUser(user);
       setIsAuthenticated(true);
-      await fetchCart();
+
       router.push("/");
       return true;
     } catch (error) {
@@ -97,13 +107,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const logout = async () => {
+const logout = async () => {
     try {
       setLoading(true);
-      await api.post("/auth/logout");
+      localStorage.removeItem("token");
+      delete api.defaults.headers.common['Authorization'];
+      
       setUser(null);
       setIsAuthenticated(false);
-      setCart(null);
+      
       router.push("/login");
     } catch (error) {
       console.error("Logout gagal:", error);
@@ -113,23 +125,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const addToCart = async (productId: number, quantity: number): Promise<boolean> => {
-    if (!isAuthenticated) {
-      router.push("/login");
-      return false;
-    }
-    
+    if (!isAuthenticated) { router.push("/login"); return false; }
     setLoadingCart(true);
     try {
-      await api.post("/cart/items", {
-        product_id: productId,
-        quantity: quantity,
-      });
-      
-      await fetchCart(); 
+      await api.post("/cart/items", { product_id: productId, quantity: quantity });
+      await fetchCart();
       return true;
-      
     } catch (error: any) {
-      console.error("Gagal nambah ke cart:", error);
       alert(error.response?.data?.error || "Gagal nambah ke keranjang");
       return false;
     } finally {
@@ -138,15 +140,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const updateCartQuantity = async (cartItemId: number, newQuantity: number): Promise<boolean> => {
-    if (newQuantity <= 0) {
-      return removeCartItem(cartItemId);
-    }
-    
+    if (newQuantity <= 0) { return removeCartItem(cartItemId); }
     setLoadingCart(true);
     try {
-      await api.put(`/cart/items/${cartItemId}`, {
-        quantity: newQuantity,
-      });
+      await api.put(`/cart/items/${cartItemId}`, { quantity: newQuantity });
       await fetchCart();
       return true;
     } catch (error: any) {
@@ -173,7 +170,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated, login, logout, loading, cart, loadingCart, addToCart, updateCartQuantity, removeCartItem }}
+      value={{
+        user,
+        isAuthenticated,
+        login,
+        logout,
+        loading,
+        cart,
+        loadingCart,
+        addToCart,
+        updateCartQuantity,
+        removeCartItem,
+      }}
     >
       {children}
     </AuthContext.Provider>
