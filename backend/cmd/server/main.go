@@ -15,7 +15,6 @@ import (
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"google.golang.org/grpc"
-	rs_cors "github.com/rs/cors"
 
 	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
 	pb "github.com/akhdanrgya/telu-hub/proto/stock" 
@@ -77,27 +76,34 @@ func runGrpcServer(stockSvc *grpc_service.StockService, port string) *grpc.Serve
 }
 
 func runGrpcWebServer(grpcServer *grpc.Server, port string) {
-	wrappedGrpc := grpcweb.WrapServer(grpcServer,
-		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+	wrappedGrpc := grpcweb.WrapServer(
+		grpcServer,
+		grpcweb.WithOriginFunc(func(origin string) bool {
+			return origin == "http://localhost:3000"
+		}),
 	)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, x-grpc-web, X-User-Agent, Authorization, grpc-timeout")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		if wrappedGrpc.IsGrpcWebRequest(r) || wrappedGrpc.IsAcceptableGrpcCorsRequest(r) || wrappedGrpc.IsGrpcWebSocketRequest(r) {
 			wrappedGrpc.ServeHTTP(w, r)
 			return
 		}
+
 		http.NotFound(w, r)
 	})
 
-	c := rs_cors.New(rs_cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
-		AllowedMethods:   []string{"POST", "GET", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "x-grpc-web", "Authorization"},
-		AllowCredentials: true,
-	})
 	httpServer := &http.Server{
 		Addr:    port,
-		Handler: c.Handler(handler),
+		Handler: handler,
 	}
 
 	log.Printf("👨‍🚀 Server gRPC-Web (Proxy) jalan di port %s", port)

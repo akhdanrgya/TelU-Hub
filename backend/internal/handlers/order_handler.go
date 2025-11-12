@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"crypto/sha512"
-	"encoding/hex" 
+	"encoding/hex"
+	"fmt"
 	"log"
 	"strconv"
-	"strings" 
+	"strings"
 	"time"
 
 	"github.com/akhdanrgya/telu-hub/config"
@@ -16,13 +17,11 @@ import (
 	"gorm.io/gorm"
 
 	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
-	
 )
 
-
 type OrderHandler struct {
-	DB *gorm.DB
-	SnapClient snap.Client
+	DB           *gorm.DB
+	SnapClient   snap.Client
 	StockService *grpc_service.StockService
 }
 
@@ -47,11 +46,11 @@ type OrderResponse struct {
 }
 
 func NewOrderHandler(db *gorm.DB, stockService *grpc_service.StockService) *OrderHandler {
-    var handler OrderHandler
-    handler.DB = db
-    handler.SnapClient.New(midtrans.ServerKey, midtrans.Sandbox)
-    handler.StockService = stockService
-    return &handler
+	var handler OrderHandler
+	handler.DB = db
+	handler.SnapClient.New(midtrans.ServerKey, midtrans.Sandbox)
+	handler.StockService = stockService
+	return &handler
 }
 
 func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
@@ -78,15 +77,6 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 			if item.Quantity > item.Product.Stock {
 				return fiber.NewError(fiber.StatusBadRequest, "Stok untuk "+item.Product.Name+" tidak cukup")
 			}
-
-			newStock := item.Product.Stock - item.Quantity
-			if err := tx.Model(&item.Product).Update("stock", newStock).Error; err != nil {
-				log.Printf("[CHECKOUT] Gagal update stok produk ID %d: %v", item.ProductID, err)
-				return fiber.NewError(fiber.StatusInternalServerError, "Gagal mengupdate stok produk")
-			}
-
-			h.StockService.BroadcastStockUpdate(item.ProductID, newStock)
-			
 			price := item.Product.Price
 			totalAmount += (float64(item.Quantity) * price)
 
@@ -95,7 +85,7 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 				Quantity:    item.Quantity,
 				PriceAtTime: price,
 			})
-			
+
 			midtransItems = append(midtransItems, midtrans.ItemDetails{
 				ID:    strconv.FormatUint(uint64(item.ProductID), 10),
 				Price: int64(price),
@@ -118,10 +108,10 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 		tx.First(&user, userID)
 
 		orderIDStr := "TELUHUB-" + strconv.FormatUint(uint64(order.ID), 10) + "-" + strconv.FormatInt(time.Now().Unix(), 10)
-		
+
 		snapReq := &snap.Request{
 			TransactionDetails: midtrans.TransactionDetails{
-				OrderID:  orderIDStr, 
+				OrderID:  orderIDStr,
 				GrossAmt: int64(totalAmount),
 			},
 			CustomerDetail: &midtrans.CustomerDetails{
@@ -135,7 +125,7 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 		if snapErr != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Gagal membuat transaksi Midtrans")
 		}
-		
+
 		snapToken = snapResp.Token
 		orderIDGorm = order.ID
 
@@ -152,10 +142,10 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"snap_token": snapToken,
-		"order_id": orderIDGorm,
+		"order_id":   orderIDGorm,
 	})
 }
 
@@ -171,7 +161,7 @@ type MidtransNotification struct {
 
 func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
 	var notification MidtransNotification
-	
+
 	if err := c.BodyParser(&notification); err != nil {
 		log.Printf("[WEBHOOK] 400 Bad Request: Gagal parse body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse request"})
@@ -193,14 +183,14 @@ func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
 	}
 
 	log.Printf("[WEBHOOK] 200 OK: Notifikasi ASLI diterima untuk Order ID: %s, Status: %s", notification.OrderID, notification.TransactionStatus)
-	
+
 	orderIDParts := strings.Split(notification.OrderID, "-")
 	if len(orderIDParts) < 3 {
 		log.Printf("[WEBHOOK] 400 Bad Request: Format Order ID asli salah: %s", notification.OrderID)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid Order ID format"})
 	}
-	
-	realOrderID, err := strconv.ParseUint(orderIDParts[1], 10, 64) 
+
+	realOrderID, err := strconv.ParseUint(orderIDParts[1], 10, 64)
 	if err != nil {
 		log.Printf("[WEBHOOK] 400 Bad Request: Gagal parse Order ID asli: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid Order ID"})
@@ -213,11 +203,51 @@ func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
 	}
 
 	if notification.TransactionStatus == "settlement" || notification.TransactionStatus == "capture" {
-		order.Status = "paid" 
-		if err := h.DB.Save(&order).Error; err != nil {
-			log.Printf("[WEBHOOK] 500 Server Error: Gagal update status order %d: %v", realOrderID, err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "DB update failed"})
+		if order.Status == "paid" {
+			log.Printf("[WEBHOOK] INFO: Order %d udah 'paid', skip", realOrderID)
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Already processed"})
 		}
+
+
+		err := h.DB.Transaction(func(tx *gorm.DB) error {
+			var orderItems []models.OrderItem
+			if err := tx.Where("order_id = ?", realOrderID).Preload("Product").Find(&orderItems).Error; err != nil {
+				return fmt.Errorf("gagal ambil order items: %v", err)
+			}
+
+			if len(orderItems) == 0 {
+				return fmt.Errorf("order %d gak punya item", realOrderID)
+			}
+
+			for _, item := range orderItems {
+				if item.Quantity > item.Product.Stock {
+					return fmt.Errorf("stok tidak cukup untuk produk %s", item.Product.Name)
+				}
+
+				newStock := item.Product.Stock - item.Quantity
+				if err := tx.Model(&item.Product).Where("id = ?", item.ProductID).Update("stock", newStock).Error; err != nil {
+					return fmt.Errorf("gagal update stok: %v", err)
+				}
+				h.StockService.BroadcastStockUpdate(item.ProductID, newStock)
+			}
+
+			order.Status = "paid"
+			if err := tx.Save(&order).Error; err != nil {
+				return fmt.Errorf("gagal update status order: %v", err)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			log.Printf("[WEBHOOK] 500 Server Error: Gagal proses transaksi 'paid': %v", err)
+			order.Status = "failed"
+			h.DB.Save(&order)
+
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		// 3. KALO 'err == nil' (Sukses), BARU kita log
 		log.Printf("[WEBHOOK] SUKSES: Order %d statusnya di-update jadi 'paid'", realOrderID)
 	}
 
@@ -242,7 +272,7 @@ func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
 		Where("user_id = ?", userID).
 		Order("created_at desc").
 		Find(&orders).Error
-		
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data order"})
 	}
@@ -264,7 +294,7 @@ func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
 				},
 			})
 		}
-		
+
 		response = append(response, OrderResponse{
 			ID:          order.ID,
 			TotalAmount: order.TotalAmount,
@@ -282,16 +312,15 @@ func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-
 func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
 	userID, _ := c.Locals("user_id").(uint)
 	orderID := c.Params("id")
-	
+
 	var order models.Order
 	err := h.DB.Preload("OrderItems.Product").
 		Where("id = ? AND user_id = ?", orderID, userID).
 		First(&order).Error
-		
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Order tidak ditemukan"})
@@ -321,6 +350,6 @@ func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
 		CreatedAt:   order.CreatedAt,
 		OrderItems:  orderItemsResponse,
 	}
-	
+
 	return c.Status(fiber.StatusOK).JSON(response)
 }
