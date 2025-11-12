@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package teluhub.stock;
+option go_package = "github.com/akhdanrgya/TelU-Hub/backend/pb;pb";
+
+message UpdateStockRequest {
+  string product_id = 1;
+  int64 delta = 2; // positif = tambah, negatif = kurang
+  string reason = 3; // optional, misal "sale" atau "restock"
+  int64 timestamp = 4; // unix epoch millis
+}
+
+message UpdateStockResponse {
+  string product_id = 1;
+  int64 new_quantity = 2;
+  bool ok = 3;
+  string message = 4;
+}
+
+service StockService {
+  rpc UpdateStock (UpdateStockRequest) returns (UpdateStockResponse);
+}
