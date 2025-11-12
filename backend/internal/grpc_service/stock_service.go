@@ -1,87 +1,81 @@
 package grpc_service
 
 import (
-	"context"
-	"fmt"
 	"log"
+	"sync"
 
-	"github.com/akhdanrgya/telu-hub/internal/models"
-	pb "github.com/akhdanrgya/telu-hub/pb"
-	"gorm.io/gorm"
+	pb "github.com/akhdanrgya/telu-hub/proto/stock"
 )
 
-// StockService (Otak Gudang)
-// Dia butuh 'DB' buat ngomong ke Postgres
 type StockService struct {
-	pb.UnimplementedStockServiceServer // Wajib ada
-	DB *gorm.DB
+	pb.UnimplementedStockServiceServer
+	mu sync.Mutex 
+	Hub map[uint32][]chan *pb.StockUpdateResponse 
 }
 
-// NewStockService (Constructor)
-func NewStockService(db *gorm.DB) *StockService {
+func NewStockService() *StockService {
 	return &StockService{
-		DB: db,
+		Hub: make(map[uint32][]chan *pb.StockUpdateResponse),
 	}
 }
 
-// 2. 🚨 IMPLEMENTASI 'UpdateStock' (sesuai .proto lo)
-func (s *StockService) UpdateStock(ctx context.Context, req *pb.UpdateStockRequest) (*pb.UpdateStockResponse, error) {
+
+func (s *StockService) TrackStock(req *pb.TrackStockRequest, stream pb.StockService_TrackStockServer) error {
 	productID := req.GetProductId()
-	delta := req.GetDelta() // 'delta' (misal: -3 atau +10)
-	
-	log.Printf("[gRPC] Terima request UpdateStock: Produk ID %s, Delta %d", productID, delta)
+	log.Printf("[gRPC] Penonton BARU terhubung untuk Produk ID: %d", productID)
 
-	// 3. Kita butuh 'Transaction' biar aman
-	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		// Cari produknya
-		var product models.Product
-		
-		// 4. 🚨 PENTING: .proto lo pake 'string' buat product_id
-		//    Tapi 'models.Product' lo pake 'uint'
-		//    Kita harus 'First' pake 'string'
-		if err := tx.Where("id = ?", productID).First(&product).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				log.Printf("[gRPC] Error: Produk ID %s tidak ditemukan", productID)
-				return fmt.Errorf("produk ID %s tidak ditemukan", productID)
+	ch := make(chan *pb.StockUpdateResponse, 5)
+
+	s.mu.Lock()
+	s.Hub[productID] = append(s.Hub[productID], ch)
+	s.mu.Unlock()
+
+	defer func() {
+		log.Printf("[gRPC] Penonton Produk ID: %d PUTUS", productID)
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		subscribers := s.Hub[productID]
+		for i, sub := range subscribers {
+			if sub == ch {
+				s.Hub[productID] = append(subscribers[:i], subscribers[i+1:]...)
+				break
 			}
-			return err
 		}
-		
-		// 5. Hitung stok baru
-		// (Kita pake 'int64' biar cocok sama 'delta')
-		newStock := int64(product.Stock) + delta
-		
-		if newStock < 0 {
-			log.Printf("[gRPC] Error: Stok tidak cukup (mau %d, sisa %d)", delta, product.Stock)
-			return fmt.Errorf("stok tidak cukup")
-		}
+		close(ch)
+	}()
 
-		// 6. Update stok di DB
-		product.Stock = int(newStock) // Balikin ke 'int'
-		if err := tx.Save(&product).Error; err != nil {
-			return err
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case update := <-ch:
+			if err := stream.Send(update); err != nil {
+				log.Printf("[gRPC] Error mengirim stream ke Produk ID %d: %v", productID, err)
+				return err
+			}
 		}
-		
-		return nil // Commit transaksi
-	})
+	}
+}
 
-	// 7. Handle hasil transaksi
-	if err != nil {
-		return &pb.UpdateStockResponse{
-			ProductId: productID,
-			Ok:        false,
-			Message:   err.Error(),
-		}, nil // Di gRPC, kita balikin 'error'-nya di response, bukan di 'error'
+func (s *StockService) BroadcastStockUpdate(productID uint, newStock int) {
+	update := &pb.StockUpdateResponse{
+		ProductId: uint32(productID),
+		NewStock:  int32(newStock),
+	}
+	log.Printf("[gRPC] SIARAN DIMULAI: Produk ID %d, Stok Baru %d", productID, newStock)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	subscribers, ok := s.Hub[uint32(productID)]
+	if !ok {
+		return
 	}
 
-	// 8. Kalo SUKSES
-	var updatedProduct models.Product
-	s.DB.First(&updatedProduct, productID) // Ambil data baru
-	
-	return &pb.UpdateStockResponse{
-		ProductId:   productID,
-		NewQuantity: int64(updatedProduct.Stock),
-		Ok:          true,
-		Message:     "Stok berhasil di-update",
-	}, nil
+	for _, ch := range subscribers {
+		select {
+		case ch <- update:
+		default:
+		}
+	}
 }

@@ -9,6 +9,7 @@ import NextImage from "next/image";
 import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
 import NextLink from "next/link";
+import { useStockStream } from "@/hooks/useStockStream";
 
 const ProductDetailPage = () => {
 
@@ -18,6 +19,7 @@ const ProductDetailPage = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const liveStock = useStockStream(product?.id || null);
 
   useEffect(() => {
     if (slug) {
@@ -85,7 +87,12 @@ const ProductDetailPage = () => {
           </p>
           
           <div className="text-sm text-default-600">
-            <span>Stok: {product.stock}</span>
+            <span className="font-bold text-lg">
+              Stok: {liveStock !== null ? liveStock : product.stock}
+            </span>
+            {liveStock !== null && (
+              <span className="ml-2 text-success-600 font-bold">(Live Update!)</span>
+            )}
             <span className="mx-2">|</span>
             <span>
               Dijual oleh:{" "}
@@ -106,10 +113,12 @@ const ProductDetailPage = () => {
             color="primary"
             size="lg"
             className="mt-6 w-full md:w-auto"
-            disabled={product.stock === 0}
+            disabled={(liveStock !== null ? liveStock : product.stock) === 0}
             onPress={() => console.log(`Tambah ${product.name} ke cart`)}
           >
-            {product.stock === 0 ? "Stok Habis" : "Tambah ke Keranjang"}
+            {(liveStock !== null ? liveStock : product.stock) === 0 
+              ? "Stok Habis" 
+              : "Tambah ke Keranjang"}
           </Button>
         </div>
 

@@ -7,16 +7,18 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"gorm.io/gorm"
+
+	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
 )
 
-func SetupRoutes(app *fiber.App, db *gorm.DB) {
+func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockService) {
 
 	authHandler := NewAuthHandler(db)
 	productHandler := NewProductHandler(db)
 	cartHandler := NewCartHandler(db)
 	uploadHandler := NewUploadHandler()
 	userHandler := NewUserHandler(db)
-	orderHandler := NewOrderHandler(db)
+	orderHandler := NewOrderHandler(db, stockService)
 
 
 	api := app.Group("/api/v1")

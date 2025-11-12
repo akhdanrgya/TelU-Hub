@@ -14,12 +14,16 @@ import (
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/snap"
 	"gorm.io/gorm"
+
+	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
+	
 )
 
 
 type OrderHandler struct {
 	DB *gorm.DB
 	SnapClient snap.Client
+	StockService *grpc_service.StockService
 }
 
 type OrderProductResponse struct { // 👈 Ini BEDA sama 'CartProductResponse' (gak ada slug)
@@ -38,15 +42,16 @@ type OrderResponse struct {
 	ID          uint                `json:"id"`
 	TotalAmount float64             `json:"total_amount"`
 	Status      string              `json:"status"`
-	CreatedAt   time.Time           `json:"created_at"` // 👈 Kita kasih tanggal
+	CreatedAt   time.Time           `json:"created_at"`
 	OrderItems  []OrderItemResponse `json:"OrderItems"`
 }
 
-func NewOrderHandler(db *gorm.DB) *OrderHandler {
-	var handler OrderHandler
-	handler.DB = db
-	handler.SnapClient.New(midtrans.ServerKey, midtrans.Sandbox)
-	return &handler
+func NewOrderHandler(db *gorm.DB, stockService *grpc_service.StockService) *OrderHandler {
+    var handler OrderHandler
+    handler.DB = db
+    handler.SnapClient.New(midtrans.ServerKey, midtrans.Sandbox)
+    handler.StockService = stockService
+    return &handler
 }
 
 func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
@@ -79,6 +84,8 @@ func (h *OrderHandler) CreateOrderAndPay(c *fiber.Ctx) error {
 				log.Printf("[CHECKOUT] Gagal update stok produk ID %d: %v", item.ProductID, err)
 				return fiber.NewError(fiber.StatusInternalServerError, "Gagal mengupdate stok produk")
 			}
+
+			h.StockService.BroadcastStockUpdate(item.ProductID, newStock)
 			
 			price := item.Product.Price
 			totalAmount += (float64(item.Quantity) * price)

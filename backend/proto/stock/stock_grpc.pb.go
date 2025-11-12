@@ -4,7 +4,7 @@
 // - protoc             v6.33.0
 // source: stock.proto
 
-package pb
+package stock
 
 import (
 	context "context"
@@ -19,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	StockService_UpdateStock_FullMethodName = "/teluhub.stock.StockService/UpdateStock"
+	StockService_TrackStock_FullMethodName = "/teluhub.stock.StockService/TrackStock"
 )
 
 // StockServiceClient is the client API for StockService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StockServiceClient interface {
-	UpdateStock(ctx context.Context, in *UpdateStockRequest, opts ...grpc.CallOption) (*UpdateStockResponse, error)
+	TrackStock(ctx context.Context, in *TrackStockRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StockUpdateResponse], error)
 }
 
 type stockServiceClient struct {
@@ -37,21 +37,30 @@ func NewStockServiceClient(cc grpc.ClientConnInterface) StockServiceClient {
 	return &stockServiceClient{cc}
 }
 
-func (c *stockServiceClient) UpdateStock(ctx context.Context, in *UpdateStockRequest, opts ...grpc.CallOption) (*UpdateStockResponse, error) {
+func (c *stockServiceClient) TrackStock(ctx context.Context, in *TrackStockRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StockUpdateResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateStockResponse)
-	err := c.cc.Invoke(ctx, StockService_UpdateStock_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StockService_ServiceDesc.Streams[0], StockService_TrackStock_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[TrackStockRequest, StockUpdateResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StockService_TrackStockClient = grpc.ServerStreamingClient[StockUpdateResponse]
 
 // StockServiceServer is the server API for StockService service.
 // All implementations must embed UnimplementedStockServiceServer
 // for forward compatibility.
 type StockServiceServer interface {
-	UpdateStock(context.Context, *UpdateStockRequest) (*UpdateStockResponse, error)
+	TrackStock(*TrackStockRequest, grpc.ServerStreamingServer[StockUpdateResponse]) error
 	mustEmbedUnimplementedStockServiceServer()
 }
 
@@ -62,8 +71,8 @@ type StockServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedStockServiceServer struct{}
 
-func (UnimplementedStockServiceServer) UpdateStock(context.Context, *UpdateStockRequest) (*UpdateStockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateStock not implemented")
+func (UnimplementedStockServiceServer) TrackStock(*TrackStockRequest, grpc.ServerStreamingServer[StockUpdateResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method TrackStock not implemented")
 }
 func (UnimplementedStockServiceServer) mustEmbedUnimplementedStockServiceServer() {}
 func (UnimplementedStockServiceServer) testEmbeddedByValue()                      {}
@@ -86,23 +95,16 @@ func RegisterStockServiceServer(s grpc.ServiceRegistrar, srv StockServiceServer)
 	s.RegisterService(&StockService_ServiceDesc, srv)
 }
 
-func _StockService_UpdateStock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateStockRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _StockService_TrackStock_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(TrackStockRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(StockServiceServer).UpdateStock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: StockService_UpdateStock_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StockServiceServer).UpdateStock(ctx, req.(*UpdateStockRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(StockServiceServer).TrackStock(m, &grpc.GenericServerStream[TrackStockRequest, StockUpdateResponse]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StockService_TrackStockServer = grpc.ServerStreamingServer[StockUpdateResponse]
 
 // StockService_ServiceDesc is the grpc.ServiceDesc for StockService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -110,12 +112,13 @@ func _StockService_UpdateStock_Handler(srv interface{}, ctx context.Context, dec
 var StockService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "teluhub.stock.StockService",
 	HandlerType: (*StockServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "UpdateStock",
-			Handler:    _StockService_UpdateStock_Handler,
+			StreamName:    "TrackStock",
+			Handler:       _StockService_TrackStock_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "stock.proto",
 }

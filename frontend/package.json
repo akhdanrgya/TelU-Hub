@@ -56,6 +56,8 @@
     "axios": "^1.13.0",
     "clsx": "2.1.1",
     "framer-motion": "11.18.2",
+    "google-protobuf": "^4.0.0",
+    "grpc-web": "^2.0.2",
     "intl-messageformat": "10.7.16",
     "next": "15.3.1",
     "next-themes": "0.4.6",
