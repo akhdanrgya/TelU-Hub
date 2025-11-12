@@ -8,9 +8,11 @@ import { Product } from "@/types";
 import { Link } from "@heroui/link";
 import NextLink from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStockStream } from "@/hooks/useStockStream";
 
 export const ProductCard = ({ product }: { product: Product }) => {
   const { addToCart, loadingCart } = useAuth();
+  const liveStock = useStockStream(product?.id || null);
 
   const handleAddToCartClick = () => {
     addToCart(product.id, 1);
@@ -44,7 +46,7 @@ export const ProductCard = ({ product }: { product: Product }) => {
           <p className="mt-1 text-base font-bold text-primary">
             Rp {product.price.toLocaleString("id-ID")}
           </p>
-          <p className="text-sm text-default-600 mt-1">Stok: {product.stock}</p>
+          <p className="text-sm text-default-600 mt-1">Stok: {liveStock !== null ? liveStock : product.stock}</p>
           <p className="text-sm text-default-500 mt-1 truncate">
             dijual oleh:{" "}
             <Link
@@ -66,10 +68,8 @@ export const ProductCard = ({ product }: { product: Product }) => {
           disabled={product.stock === 0 || loadingCart}
           isLoading={loadingCart}
         >
-          {product.stock === 0
-            ? "Stok Habis"
-            : loadingCart
-              ? "Loading..."
+            {(liveStock !== null ? liveStock : product.stock) === 0 
+              ? "Stok Habis" 
               : "Tambah ke Keranjang"}
         </Button>
       </div>

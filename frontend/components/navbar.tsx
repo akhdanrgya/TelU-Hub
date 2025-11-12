@@ -21,11 +21,10 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
-
-import { siteConfig } from "@/config/site";
+import { FiShoppingCart, FiUser } from "react-icons/fi";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Logo } from "@/components/icons";
-import { FiShoppingCart, FiUser } from "react-icons/fi";
+import { siteConfig } from "@/config/site";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Navbar = () => {
@@ -36,24 +35,30 @@ export const Navbar = () => {
     : 0;
 
   return (
-    <HeroUINavbar maxWidth="xl" position="sticky">
-      <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
-        <NavbarBrand as="li" className="gap-3 max-w-fit">
-          <NextLink className="flex justify-start items-center gap-1" href="/">
+    <HeroUINavbar
+      maxWidth="xl"
+      position="sticky"
+      className="backdrop-blur-lg bg-background/70 border-b border-default-200"
+    >
+      {/* LEFT SIDE - BRAND + NAV */}
+      <NavbarContent className="flex items-center gap-6" justify="start">
+        <NavbarBrand as="li" className="flex items-center gap-2">
+          <NextLink href="/" className="flex items-center gap-2">
             <Logo />
-            <p className="font-bold text-inherit">{siteConfig.name}</p>
+            <p className="font-bold text-lg sm:text-xl">{siteConfig.name}</p>
           </NextLink>
         </NavbarBrand>
-        <ul className="hidden lg:flex gap-4 justify-start ml-2">
+
+        {/* NAV LINKS (hidden on mobile) */}
+        <ul className="hidden lg:flex gap-4 ml-4">
           {siteConfig.navItems.map((item) => (
             <NavbarItem key={item.href}>
               <NextLink
+                href={item.href}
                 className={clsx(
                   linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium"
+                  "hover:text-primary transition-colors"
                 )}
-                color="foreground"
-                href={item.href}
               >
                 {item.label}
               </NextLink>
@@ -62,172 +67,143 @@ export const Navbar = () => {
         </ul>
       </NavbarContent>
 
-      <NavbarContent
-        className="hidden sm:flex basis-1/5 sm:basis-full"
-        justify="end"
-      >
-        <NavbarItem className="hidden sm:flex gap-2">
-          <ThemeSwitch />
-        </NavbarItem>
+      {/* RIGHT SIDE - THEME + CART + AUTH */}
+      <NavbarContent justify="end" className="hidden sm:flex items-center gap-4">
+        <ThemeSwitch />
 
         {loading ? (
-          <NavbarItem className="hidden md:flex">
-            <p className="text-default-500">Loading...</p>
-          </NavbarItem>
+          <p className="text-default-500">Loading...</p>
         ) : isAuthenticated ? (
-          <>
-            <NavbarItem className="hidden md:flex">
-              <div className="flex items-center gap-4">
-                <Dropdown placement="bottom-end">
-                  <DropdownTrigger>
-                    <Button variant="light" isIconOnly>
-                      <Badge
-                        content={totalCartItems}
-                        color="danger"
-                        isInvisible={totalCartItems === 0}
-                      >
-                        <FiShoppingCart size={20} />
-                      </Badge>
-                    </Button>
-                  </DropdownTrigger>
-
-                  <DropdownMenu
-                    aria-label="Cart Popup"
-                    variant="flat"
-                    className="min-w-[350px]"
+          <div className="flex items-center gap-3">
+            {/* CART DROPDOWN */}
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <Button variant="light" isIconOnly>
+                  <Badge
+                    content={totalCartItems}
+                    color="danger"
+                    isInvisible={totalCartItems === 0}
                   >
-                    <DropdownItem
-                      key="header"
-                      isReadOnly
-                      className="font-bold text-lg"
-                    >
-                      Keranjang Saya ({totalCartItems} item)
-                    </DropdownItem>
+                    <FiShoppingCart size={20} />
+                  </Badge>
+                </Button>
+              </DropdownTrigger>
 
-                    {cart?.CartItems && cart.CartItems.length > 0 ? (
-                      <>
-                        {cart.CartItems.map((item) => (
-                          <DropdownItem
-                            key={item.id}
-                            as={NextLink}
-                            href={`/products/${item.Product.slug}`}
-                            className="h-auto py-2"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Avatar
-                                src={item.Product.image_url}
-                                name={item.Product.name ? item.Product.name.charAt(0) : '?'}
-                                size="md"
-                              />
-                              <div className="flex-grow">
-                                <p className="font-semibold truncate">
-                                  {item.Product.name}
-                                </p>
-                                <p className="text-xs text-default-500">
-                                  Qty: {item.quantity}
-                                </p>
-                              </div>
-                              <div className="text-right flex-shrink-0">
-                                <p className="font-semibold text-primary">
-                                  Rp{" "}
-                                  {(
-                                    item.quantity * item.Product.price
-                                  ).toLocaleString("id-ID")}
-                                </p>
-                                <p className="text-xs text-default-500">
-                                  @ Rp{" "}
-                                  {item.Product.price.toLocaleString("id-ID")}
-                                </p>
-                              </div>
-                            </div>
-                          </DropdownItem>
-                        ))}
-                      </>
-                    ) : (
+              <DropdownMenu
+                aria-label="Cart"
+                variant="flat"
+                className="min-w-[340px] max-h-[400px] overflow-y-auto"
+              >
+                <DropdownItem isReadOnly className="font-bold text-lg" key={""}>
+                  Keranjang Saya ({totalCartItems})
+                </DropdownItem>
+
+                {cart?.CartItems?.length ? (
+                  <>
+                    {cart.CartItems.map((item) => (
                       <DropdownItem
-                        key="empty"
-                        isReadOnly
-                        className="text-center text-default-500 py-4"
+                        key={item.id}
+                        as={NextLink}
+                        href={`/products/${item.Product.slug}`}
+                        className="py-2"
                       >
-                        Keranjang mu kosong
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            src={item.Product.image_url}
+                            name={item.Product.name?.charAt(0) ?? "?"}
+                            size="md"
+                          />
+                          <div className="flex-grow">
+                            <p className="font-semibold truncate">
+                              {item.Product.name}
+                            </p>
+                            <p className="text-xs text-default-500">
+                              Qty: {item.quantity}
+                            </p>
+                          </div>
+                          <p className="font-semibold text-primary text-sm whitespace-nowrap">
+                            Rp {(item.Product.price * item.quantity).toLocaleString("id-ID")}
+                          </p>
+                        </div>
                       </DropdownItem>
-                    )}
+                    ))}
+                    <DropdownItem key="footer" className="p-0 mt-2">
+                      <Button
+                        as={NextLink}
+                        href="/cart"
+                        color="primary"
+                        className="w-full rounded-none"
+                      >
+                        Lihat Keranjang & Checkout
+                      </Button>
+                    </DropdownItem>
+                  </>
+                ) : (
+                  <DropdownItem
+                    key="empty"
+                    isReadOnly
+                    className="text-center text-default-500 py-4"
+                  >
+                    Keranjangmu kosong
+                  </DropdownItem>
+                )}
+              </DropdownMenu>
+            </Dropdown>
 
-                    {cart?.CartItems && cart.CartItems.length > 0 ? (
-                      <DropdownItem key="footer" className="p-0 mt-2">
-                        <Button
-                          as={NextLink}
-                          href="/cart"
-                          color="primary"
-                          className="w-full"
-                          radius="none"
-                        >
-                          Lihat Keranjang & Checkout
-                        </Button>
-                      </DropdownItem>
-                    ) : null}
-                  </DropdownMenu>
-                </Dropdown>
-
-                <Dropdown placement="bottom-end">
-                  <DropdownTrigger>
-                    <Avatar
-                      isBordered
-                      as="button"
-                      className="transition-transform"
-                      color="primary"
-                      size="sm"
-                      src={user?.profile_image_url}
-                      name={user?.username.charAt(0).toUpperCase()}
-                    />
-                  </DropdownTrigger>
-                  <DropdownMenu aria-label="Profile Actions" variant="flat">
+            {/* USER DROPDOWN */}
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <Avatar
+                  isBordered
+                  as="button"
+                  className="cursor-pointer"
+                  color="primary"
+                  size="sm"
+                  src={user?.profile_image_url}
+                  name={user?.username?.charAt(0).toUpperCase()}
+                />
+              </DropdownTrigger>
+              <DropdownMenu aria-label="User Menu" variant="flat">
+                <DropdownItem isReadOnly className="h-14" key={"user id"}>
+                  <p className="font-semibold">Hi, {user?.username}</p>
+                  <p className="text-sm text-default-500">{user?.email}</p>
+                </DropdownItem>
+                <DropdownItem as={NextLink} href="/profile" key={""}>
+                  Profil Saya
+                </DropdownItem>
+                <DropdownItem as={NextLink} href="/orders" key={""}>
+                  Pesanan Saya
+                </DropdownItem>
+                {user?.role === "seller"
+                  ? (
                     <DropdownItem
-                      key="profile-info"
-                      className="h-14 gap-2"
-                      isReadOnly
-                    >
-                      <p className="font-semibold">Signed in as</p>
-                      <p className="font-semibold">{user?.email}</p>
-                    </DropdownItem>
-                    <DropdownItem key="profile" as={NextLink} href="/profile">
-                      Profil Saya
-                    </DropdownItem>
-                    <DropdownItem key="orders" as={NextLink} href="/orders">
-                      Pesanan Saya
-                    </DropdownItem>
-                    {user?.role === "seller" ? (
-                      <DropdownItem
-                        key="seller-dashboard"
                         as={NextLink}
                         href="/seller/dashboard"
-                        className="text-primary"
-                        color="primary"
-                      >
-                        Seller Dashboard
-                      </DropdownItem>
-                    ) : null}
-                    {user?.role === "admin" ? (
-                      <DropdownItem
-                        key="admin-dashboard"
+                        color="primary" key={""}                    >
+                      Seller Dashboard
+                    </DropdownItem>
+                  )
+                  : null}
+
+                {user?.role === "admin"
+                  ? (
+                    <DropdownItem
                         as={NextLink}
                         href="/admin/dashboard"
-                        className="text-secondary"
-                        color="secondary"
-                      >
-                        Admin Dashboard
-                      </DropdownItem>
-                    ) : null}
-                    <DropdownItem key="logout" color="danger" onPress={logout}>
-                      Logout
+                        color="secondary" key={""}                    >
+                      Admin Dashboard
                     </DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
-              </div>
-            </NavbarItem>
-          </>
+                  )
+                  : null}
+
+                <DropdownItem color="danger" onPress={logout} key={""}>
+                  Logout
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
         ) : (
-          <NavbarItem className="hidden md:flex gap-2">
+          <div className="flex gap-2">
             <Button
               as={NextLink}
               href="/login"
@@ -236,62 +212,67 @@ export const Navbar = () => {
             >
               Login
             </Button>
-            <Button
-              as={NextLink}
-              href="/register"
-              variant="flat"
-              color="primary"
-            >
+            <Button as={NextLink} href="/register" color="primary">
               Register
             </Button>
-          </NavbarItem>
+          </div>
         )}
       </NavbarContent>
 
-      <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
+      {/* MOBILE - THEME + CART + TOGGLE */}
+      <NavbarContent className="sm:hidden flex items-center gap-3" justify="end">
         <ThemeSwitch />
-        <NextLink href="/cart">
+        <NextLink href="/cart" className="relative">
           <Badge
             content={totalCartItems}
             color="danger"
             isInvisible={totalCartItems === 0}
           >
-            <FiShoppingCart size={20} />
+            <FiShoppingCart size={22} />
           </Badge>
         </NextLink>
         <NavbarMenuToggle />
       </NavbarContent>
 
+      {/* MOBILE MENU */}
       <NavbarMenu>
-        <div className="mx-4 mt-2 flex flex-col gap-2">
+        <div className="mx-4 mt-4 flex flex-col gap-3">
           {siteConfig.navMenuItems.map((item, index) => (
-            <NavbarMenuItem key={`${item}-${index}`}>
+            <NavbarMenuItem key={index}>
               <Link
+                href={item.href}
                 color={
                   index === siteConfig.navMenuItems.length - 1
                     ? "danger"
                     : "foreground"
                 }
-                href={item.href}
                 size="lg"
               >
                 {item.label}
               </Link>
             </NavbarMenuItem>
           ))}
-        </div>
-        {isAuthenticated && (
-          <NavbarMenuItem>
+
+          {isAuthenticated ? (
             <Button
               onPress={logout}
               color="danger"
               variant="flat"
-              className="w-full"
+              className="mt-3"
             >
               Logout
             </Button>
-          </NavbarMenuItem>
-        )}
+          ) : (
+            <div className="flex flex-col gap-2 mt-4">
+              <Button as={NextLink} href="/login" variant="flat">
+                Login
+              </Button>
+              <Button as={NextLink} href="/register" color="primary">
+                Register
+              </Button>
+            </div>
+          )}
+        </div>
       </NavbarMenu>
     </HeroUINavbar>
   );
