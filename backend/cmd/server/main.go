@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/midtrans/midtrans-go"
+	"github.com/akhdanrgya/telu-hub/internal/chat"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"google.golang.org/grpc"
@@ -38,6 +39,8 @@ func main() {
 	grpcServer := runGrpcServer(stockService, ":50051")
 	go runGrpcWebServer(grpcServer, ":8081")
 
+	chatManager := chat.NewChatManager()
+
 	app := fiber.New()
 	
 	app.Use(logger.New())
@@ -50,7 +53,7 @@ func main() {
 
 	app.Static("/uploads", "./uploads")
 
-	handlers.SetupRoutes(app, db, stockService)
+	handlers.SetupRoutes(app, db, stockService, chatManager)
 
 	port := config.GetAppPort()
 	log.Printf("🔥 Server Fiber jalan di port %s", port)

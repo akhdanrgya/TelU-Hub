@@ -10,6 +10,8 @@ import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
 import NextLink from "next/link";
 import { useStockStream } from "@/hooks/useStockStream";
+import { FiMessageSquare } from "react-icons/fi";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ProductDetailPage = () => {
 
@@ -20,6 +22,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const liveStock = useStockStream(product?.id || null);
+  const { isAuthenticated, addToCart, loadingCart } = useAuth();
 
   useEffect(() => {
     if (slug) {
@@ -27,10 +30,10 @@ const ProductDetailPage = () => {
         try {
           setLoading(true);
           setError("");
-          
+
           const response = await api.get(`/products/${slug}`);
           setProduct(response.data);
-          
+
         } catch (err) {
           setError("Produk tidak ditemukan atau error");
           console.error(err);
@@ -63,11 +66,15 @@ const ProductDetailPage = () => {
     );
   }
 
+  const handleAddToCart = () => {
+    if (!product) return;
+    addToCart(product.id, 1);
+  };
+
   return (
     <div className="py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-        
-        {/* Kolom Kiri: Gambar */}
+
         <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
           <NextImage
             src={product.image_url}
@@ -77,15 +84,15 @@ const ProductDetailPage = () => {
             priority
           />
         </div>
-        
+
 
         <div className="flex flex-col gap-4 py-4">
           <h1 className="text-4xl font-bold">{product.name}</h1>
-          
+
           <p className="text-3xl font-bold text-primary">
             Rp {product.price.toLocaleString("id-ID")}
           </p>
-          
+
           <div className="text-sm text-default-600">
             <span className="font-bold text-lg">
               Stok: {liveStock !== null ? liveStock : product.stock}
@@ -101,25 +108,39 @@ const ProductDetailPage = () => {
               </Link>
             </span>
           </div>
-          
+
           <div className="mt-4">
             <h2 className="text-xl font-semibold">Deskripsi</h2>
             <p className="text-default-700 mt-2 whitespace-pre-wrap">
               {product.description}
             </p>
           </div>
+          <div className="flex items-center gap-4 mt-6">
+            <Button
+              color="primary"
+              size="lg"
+              className="flex-grow"
+              disabled={(liveStock !== null ? liveStock : product.stock) === 0}
+              isLoading={loadingCart}
+              onPress={handleAddToCart}
+            >
+              {(liveStock !== null ? liveStock : product.stock) === 0
+                ? "Stok Habis"
+                : "Tambah ke Keranjang"}
+            </Button>
 
-          <Button
-            color="primary"
-            size="lg"
-            className="mt-6 w-full md:w-auto"
-            disabled={(liveStock !== null ? liveStock : product.stock) === 0}
-            onPress={() => console.log(`Tambah ${product.name} ke cart`)}
-          >
-            {(liveStock !== null ? liveStock : product.stock) === 0 
-              ? "Stok Habis" 
-              : "Tambah ke Keranjang"}
-          </Button>
+            <Button
+              as={NextLink}
+              href={`/chat/${product.id}`}
+              isIconOnly
+              size="lg"
+              variant="flat"
+              title="Chat Penjual"
+              disabled={!isAuthenticated}
+            >
+              <FiMessageSquare size={20} />
+            </Button>
+          </div>
         </div>
 
       </div>

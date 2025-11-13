@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	"log"
-
+	"github.com/akhdanrgya/telu-hub/internal/chat"
 	"github.com/akhdanrgya/telu-hub/internal/middleware" 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -11,7 +10,7 @@ import (
 	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
 )
 
-func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockService) {
+func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockService, chatManager *chat.ChatManager) {
 
 	authHandler := NewAuthHandler(db)
 	productHandler := NewProductHandler(db)
@@ -71,8 +70,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockSe
 		orders.Get("/", orderHandler.GetMyOrders) 
 		orders.Get("/:id", orderHandler.GetOrderByID)
 
-	app.Get("/ws/chat/:channel_id", middleware.Protected(), websocket.New(func(c *websocket.Conn) {
-		log.Println("Koneksi WebSocket baru!")
-        c.WriteJSON(fiber.Map{"message": "Welcome to Chat!"})
-	}))
+	ws := api.Group("/ws", middleware.Protected())
+
+	ws.Get("/chat/:roomId", websocket.New(chatManager.HandleConnection))
 }
