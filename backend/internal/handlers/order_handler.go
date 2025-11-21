@@ -211,10 +211,13 @@ func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Already processed"})
 		}
 
+		// Map untuk menyimpan seller yang terlibat dan produknya
+		sellerProductsMap := make(map[uint][]string)
 
 		err := h.DB.Transaction(func(tx *gorm.DB) error {
 			var orderItems []models.OrderItem
-			if err := tx.Where("order_id = ?", realOrderID).Preload("Product").Find(&orderItems).Error; err != nil {
+			// Preload Product.Seller biar kita tau siapa penjualnya
+			if err := tx.Where("order_id = ?", realOrderID).Preload("Product.Seller").Find(&orderItems).Error; err != nil {
 				return fmt.Errorf("gagal ambil order items: %v", err)
 			}
 
@@ -232,6 +235,11 @@ func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
 					return fmt.Errorf("gagal update stok: %v", err)
 				}
 				h.StockService.BroadcastStockUpdate(item.ProductID, newStock)
+
+				// Catat seller dan produk yang terjual
+				sellerID := item.Product.SellerID
+				productName := fmt.Sprintf("%s (x%d)", item.Product.Name, item.Quantity)
+				sellerProductsMap[sellerID] = append(sellerProductsMap[sellerID], productName)
 			}
 
 			order.Status = "paid"
@@ -246,12 +254,44 @@ func (h *OrderHandler) HandleWebhook(c *fiber.Ctx) error {
 			log.Printf("[WEBHOOK] 500 Server Error: Gagal proses transaksi 'paid': %v", err)
 			order.Status = "failed"
 			h.DB.Save(&order)
-
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		// 3. KALO 'err == nil' (Sukses), BARU kita log
 		log.Printf("[WEBHOOK] SUKSES: Order %d statusnya di-update jadi 'paid'", realOrderID)
+
+		// 1. Kirim notifikasi ke Buyer (Gunakan goroutine agar tidak blocking)
+		go func() {
+			err := h.NotifService.CreateAndSend(
+				order.UserID, // ID Buyer
+				models.NotificationTypeOrder,
+				"Pembayaran Berhasil!",
+				fmt.Sprintf("Order #%d kamu sudah lunas dan akan segera diproses.", order.ID),
+				order.ID,
+			)
+			if err != nil {
+				log.Printf("[WEBHOOK] WARNING: Gagal kirim notif ke buyer %d: %v", order.UserID, err)
+			}
+		}()
+
+		// 2. Kirim notifikasi ke semua Seller yang terlibat
+		for sellerID, productNames := range sellerProductsMap {
+			// Gunakan goroutine terpisah untuk setiap seller
+			go func(sID uint, pNames []string) {
+				productListStr := strings.Join(pNames, ", ")
+				err := h.NotifService.CreateAndSend(
+					sID, // ID Seller
+					models.NotificationTypeOrder,
+					"Produk Anda Terjual! 🎉",
+					fmt.Sprintf("Ada pesanan baru untuk produk: %s. Segera proses ya!", productListStr),
+					order.ID, // Reference ID sama ke Order ID
+				)
+				if err != nil {
+					log.Printf("[WEBHOOK] WARNING: Gagal kirim notif ke seller %d: %v", sID, err)
+				} else {
+					log.Printf("[WEBHOOK] INFO: Notifikasi penjualan terkirim ke seller %d", sID)
+				}
+			}(sellerID, productNames)
+		}
 	}
 
 	if notification.TransactionStatus == "expire" || notification.TransactionStatus == "failure" || notification.TransactionStatus == "deny" {
@@ -267,10 +307,6 @@ func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
 	userID, _ := c.Locals("user_id").(uint)
 
 	var orders []models.Order
-	// 1. Ambil semua order punya user ini
-	// 2. Preload Item-nya
-	// 3. Preload Produk di dalem Item-nya
-	// 4. Urutin dari yg paling baru (Descending)
 	err := h.DB.Preload("OrderItems.Product").
 		Where("user_id = ?", userID).
 		Order("created_at desc").
@@ -280,7 +316,6 @@ func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data order"})
 	}
 
-	// 2. Transformasi datanya jadi 'Response'
 	var response []OrderResponse
 	for _, order := range orders {
 		var orderItemsResponse []OrderItemResponse
@@ -307,7 +342,6 @@ func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
 		})
 	}
 
-	// 3. Jaring pengaman (biar gak 'null')
 	if response == nil {
 		response = make([]OrderResponse, 0)
 	}

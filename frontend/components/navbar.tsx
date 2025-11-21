@@ -26,7 +26,7 @@ import { FiShoppingCart, FiUser } from "react-icons/fi";
 
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Logo } from "@/components/icons";
-import { siteConfig } from "@/config/site";
+import { siteConfig } from "@/config/site"; 
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "@/components/NotificationBell";
 

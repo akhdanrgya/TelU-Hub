@@ -81,4 +81,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockSe
 	notifRoutes := api.Group("/notifications", middleware.Protected())
 	notifRoutes.Get("/", notifHandler.GetNotifications)
 	notifRoutes.Put("/:id/read", notifHandler.MarkRead)
+
+	ws := api.Group("/ws")
+	ws.Get("/notifications", websocket.New(notifHandler.HandleWSConnection))
 }
