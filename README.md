@@ -190,5 +190,3 @@ Pastikan di komputer Anda sudah terinstall:
 ## 👥 Kontribusi
 
 Proyek ini dikembangkan sebagai platform pembelajaran untuk membangun aplikasi *real-time* modern yang kompleks.
-
-Dikembangkan dengan ❤️ dan ☕.
