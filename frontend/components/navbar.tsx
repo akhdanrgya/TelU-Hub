@@ -28,7 +28,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { Logo } from "@/components/icons";
 import { siteConfig } from "@/config/site"; 
 import { useAuth } from "@/contexts/AuthContext";
-import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationBell } from "@/components/Bell";
 
 
 export const Navbar = () => {
