@@ -7,18 +7,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"gorm.io/gorm"
+	"github.com/akhdanrgya/telu-hub/internal/notification"
 
 	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
 )
 
-func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockService) {
+func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockService, notifService *notification.Service) {
 
 	authHandler := NewAuthHandler(db)
 	productHandler := NewProductHandler(db)
 	cartHandler := NewCartHandler(db)
 	uploadHandler := NewUploadHandler()
 	userHandler := NewUserHandler(db)
-	orderHandler := NewOrderHandler(db, stockService)
+	orderHandler := NewOrderHandler(db, stockService, notifService)
+	notifHandler := notification.NewHandler(notifService)
 
 
 	api := app.Group("/api/v1")
@@ -75,4 +77,8 @@ func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockSe
 		log.Println("Koneksi WebSocket baru!")
         c.WriteJSON(fiber.Map{"message": "Welcome to Chat!"})
 	}))
+
+	notifRoutes := api.Group("/notifications", middleware.Protected())
+	notifRoutes.Get("/", notifHandler.GetNotifications)
+	notifRoutes.Put("/:id/read", notifHandler.MarkRead)
 }

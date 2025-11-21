@@ -32,6 +32,7 @@ func InitDB() {
 		&models.CartItem{},
 		&models.Order{},
 		&models.OrderItem{},
+		&models.Notification{},
 	)
 	if err != nil {
 		log.Fatalf("ERROR: Gagal nge-migrate tabel User: %v", err)

@@ -12,12 +12,13 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/midtrans/midtrans-go"
+	"github.com/akhdanrgya/telu-hub/internal/notification"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"google.golang.org/grpc"
 
 	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
-	pb "github.com/akhdanrgya/telu-hub/proto/stock" 
+	pb "github.com/akhdanrgya/telu-hub/proto/stock"
 )
 
 func main() {
@@ -38,6 +39,10 @@ func main() {
 	grpcServer := runGrpcServer(stockService, ":50051")
 	go runGrpcWebServer(grpcServer, ":8081")
 
+	notifHub := notification.NewNotificationHub()
+	go notifHub.Run() // Jalanin Kantor Pos di background
+	notifService := notification.NewService(db, notifHub)
+
 	app := fiber.New()
 	
 	app.Use(logger.New())
@@ -50,7 +55,7 @@ func main() {
 
 	app.Static("/uploads", "./uploads")
 
-	handlers.SetupRoutes(app, db, stockService)
+	handlers.SetupRoutes(app, db, stockService,notifService)
 
 	port := config.GetAppPort()
 	log.Printf("🔥 Server Fiber jalan di port %s", port)

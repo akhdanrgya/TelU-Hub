@@ -1,4 +1,5 @@
 "use client";
+
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -22,10 +23,13 @@ import {
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
 import { FiShoppingCart, FiUser } from "react-icons/fi";
+
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Logo } from "@/components/icons";
 import { siteConfig } from "@/config/site";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "@/components/NotificationBell";
+
 
 export const Navbar = () => {
   const { isAuthenticated, user, logout, loading, cart } = useAuth();
@@ -67,7 +71,7 @@ export const Navbar = () => {
         </ul>
       </NavbarContent>
 
-      {/* RIGHT SIDE - THEME + CART + AUTH */}
+      {/* RIGHT SIDE - THEME + NOTIF + CART + AUTH */}
       <NavbarContent justify="end" className="hidden sm:flex items-center gap-4">
         <ThemeSwitch />
 
@@ -75,6 +79,10 @@ export const Navbar = () => {
           <p className="text-default-500">Loading...</p>
         ) : isAuthenticated ? (
           <div className="flex items-center gap-3">
+            
+            {/* 🚨 NOTIFICATION BELL (BARU) 🚨 */}
+            <NotificationBell />
+            
             {/* CART DROPDOWN */}
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
@@ -94,7 +102,7 @@ export const Navbar = () => {
                 variant="flat"
                 className="min-w-[340px] max-h-[400px] overflow-y-auto"
               >
-                <DropdownItem isReadOnly className="font-bold text-lg" key={""}>
+                <DropdownItem isReadOnly className="font-bold text-lg" key="cart-header">
                   Keranjang Saya ({totalCartItems})
                 </DropdownItem>
 
@@ -122,12 +130,15 @@ export const Navbar = () => {
                             </p>
                           </div>
                           <p className="font-semibold text-primary text-sm whitespace-nowrap">
-                            Rp {(item.Product.price * item.quantity).toLocaleString("id-ID")}
+                            Rp{" "}
+                            {(
+                              item.Product.price * item.quantity
+                            ).toLocaleString("id-ID")}
                           </p>
                         </div>
                       </DropdownItem>
                     ))}
-                    <DropdownItem key="footer" className="p-0 mt-2">
+                    <DropdownItem key="cart-footer" className="p-0 mt-2">
                       <Button
                         as={NextLink}
                         href="/cart"
@@ -140,7 +151,7 @@ export const Navbar = () => {
                   </>
                 ) : (
                   <DropdownItem
-                    key="empty"
+                    key="cart-empty"
                     isReadOnly
                     className="text-center text-default-500 py-4"
                   >
@@ -164,39 +175,39 @@ export const Navbar = () => {
                 />
               </DropdownTrigger>
               <DropdownMenu aria-label="User Menu" variant="flat">
-                <DropdownItem isReadOnly className="h-14" key={"user id"}>
+                <DropdownItem isReadOnly className="h-14" key="profile-info">
                   <p className="font-semibold">Hi, {user?.username}</p>
                   <p className="text-sm text-default-500">{user?.email}</p>
                 </DropdownItem>
-                <DropdownItem as={NextLink} href="/profile" key={""}>
+                <DropdownItem as={NextLink} href="/profile" key="profile">
                   Profil Saya
                 </DropdownItem>
-                <DropdownItem as={NextLink} href="/orders" key={""}>
+                <DropdownItem as={NextLink} href="/orders" key="orders">
                   Pesanan Saya
                 </DropdownItem>
-                {user?.role === "seller"
-                  ? (
-                    <DropdownItem
-                        as={NextLink}
-                        href="/seller/dashboard"
-                        color="primary" key={""}                    >
-                      Seller Dashboard
-                    </DropdownItem>
-                  )
-                  : null}
+                {user?.role === "seller" ? (
+                  <DropdownItem
+                    as={NextLink}
+                    href="/seller/dashboard"
+                    color="primary"
+                    key="seller-dashboard"
+                  >
+                    Seller Dashboard
+                  </DropdownItem>
+                ) : null}
 
-                {user?.role === "admin"
-                  ? (
-                    <DropdownItem
-                        as={NextLink}
-                        href="/admin/dashboard"
-                        color="secondary" key={""}                    >
-                      Admin Dashboard
-                    </DropdownItem>
-                  )
-                  : null}
+                {user?.role === "admin" ? (
+                  <DropdownItem
+                    as={NextLink}
+                    href="/admin/dashboard"
+                    color="secondary"
+                    key="admin-dashboard"
+                  >
+                    Admin Dashboard
+                  </DropdownItem>
+                ) : null}
 
-                <DropdownItem color="danger" onPress={logout} key={""}>
+                <DropdownItem color="danger" onPress={logout} key="logout">
                   Logout
                 </DropdownItem>
               </DropdownMenu>
@@ -219,9 +230,13 @@ export const Navbar = () => {
         )}
       </NavbarContent>
 
-      {/* MOBILE - THEME + CART + TOGGLE */}
+      {/* MOBILE - THEME + NOTIF + CART + TOGGLE */}
       <NavbarContent className="sm:hidden flex items-center gap-3" justify="end">
         <ThemeSwitch />
+        
+        {/* 🚨 NOTIFICATION BELL DI MOBILE (OPSIONAL) 🚨 */}
+        {isAuthenticated && <NotificationBell />}
+        
         <NextLink href="/cart" className="relative">
           <Badge
             content={totalCartItems}

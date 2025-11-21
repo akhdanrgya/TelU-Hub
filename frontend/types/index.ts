@@ -4,6 +4,19 @@ export type IconSvgProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 
+export type NotificationType = "order" | "chat" | "info";
+
+export interface Notification {
+  id: number;
+  user_id: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  reference_id: number;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface SellerResponse {
   id:       number;
   username: string;

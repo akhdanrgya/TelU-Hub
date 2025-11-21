@@ -15,6 +15,7 @@ import (
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/snap"
 	"gorm.io/gorm"
+	"github.com/akhdanrgya/telu-hub/internal/notification"
 
 	grpc_service "github.com/akhdanrgya/telu-hub/internal/grpc_service"
 )
@@ -23,12 +24,13 @@ type OrderHandler struct {
 	DB           *gorm.DB
 	SnapClient   snap.Client
 	StockService *grpc_service.StockService
+	NotifService *notification.Service
 }
 
-type OrderProductResponse struct { // 👈 Ini BEDA sama 'CartProductResponse' (gak ada slug)
+type OrderProductResponse struct {
 	ID       uint    `json:"id"`
 	Name     string  `json:"name"`
-	Price    float64 `json:"price"` // Kita pake 'Price' aja, bukan 'PriceAtTime'
+	Price    float64 `json:"price"`
 	ImageURL string  `json:"image_url"`
 }
 type OrderItemResponse struct {
@@ -45,11 +47,12 @@ type OrderResponse struct {
 	OrderItems  []OrderItemResponse `json:"OrderItems"`
 }
 
-func NewOrderHandler(db *gorm.DB, stockService *grpc_service.StockService) *OrderHandler {
+func NewOrderHandler(db *gorm.DB, stockService *grpc_service.StockService, notifService *notification.Service) *OrderHandler {
 	var handler OrderHandler
 	handler.DB = db
 	handler.SnapClient.New(midtrans.ServerKey, midtrans.Sandbox)
 	handler.StockService = stockService
+	handler.NotifService = notifService
 	return &handler
 }
 
@@ -289,7 +292,7 @@ func (h *OrderHandler) GetMyOrders(c *fiber.Ctx) error {
 				Product: OrderProductResponse{
 					ID:       item.Product.ID,
 					Name:     item.Product.Name,
-					Price:    item.Product.Price, // Harga produk saat ini
+					Price:    item.Product.Price,
 					ImageURL: item.Product.ImageURL,
 				},
 			})
