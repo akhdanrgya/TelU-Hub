@@ -158,39 +158,32 @@ Pastikan di komputer Anda sudah terinstall:
 
 ## 📂 Struktur Folder Proyek
 
-TELU-HUB/
-├── .gitignore               # Konfigurasi Git ignore global
-├── README.md                # Dokumentasi proyek (File ini)
-├── proto/                   # Definisi kontrak gRPC (Protocol Buffers)
-│   └── stock.proto          # Kontrak untuk layanan stok
-│
-├── backend/                 # Source code Backend (Go)
-│   ├── cmd/server/main.go   # Entry point aplikasi (inisialisasi server, db, hubs)
-│   ├── config/              # Load variabel lingkungan (.env)
-│   ├── internal/
-│   │   ├── database/        # Koneksi dan migrasi DB
-│   │   ├── models/          # Struct definisi tabel database (User, Product, dll)
-│   │   ├── handlers/        # Controller REST API (Auth, Product, Order)
-│   │   ├── middleware/      # Auth JWT middleware, dll
-│   │   ├── grpc_service/    # Implementasi gRPC Server (StockService) & kode generate
-│   │   ├── chat/            # Logika WebSocket Chat (Hub, Client, Manager)
-│   │   └── notification/    # Logika WebSocket Notifikasi (Hub, Service, Handler)
-│   ├── uploads/             # Folder tempat menyimpan file upload (di-ignore git)
-│   ├── go.mod & go.sum      # Dependensi Go
-│   └── .env                 # Config backend (JANGAN DI-COMMIT)
-│
-└── frontend/                # Source code Frontend (Next.js)
-    ├── app/                 # App Router Next.js (Pages & Layouts)
-    │   ├── (auth)/          # Halaman yang butuh login (cart, chat, profile)
-    │   ├── (public)/        # Halaman publik (home, product detail)
-    │   └── ...
-    ├── components/          # Komponen React yang bisa dipakai ulang (Navbar, Bell, Card)
-    ├── contexts/            # React Context (AuthContext - state global user & cart)
-    ├── hooks/               # Custom React Hooks (useNotifications, useStockStream)
-    ├── libs/                # Konfigurasi Axios (api.ts dengan interceptor)
-    ├── types/               # Definisi tipe TypeScript
-    ├── package.json         # Dependensi JS
-    └── .env.local           # Config frontend (JANGAN DI-COMMIT)
+    TELU-HUB/
+    ├── proto/
+    │   └── stock.proto
+    │
+    ├── backend/
+    │   ├── cmd/server/
+    │   ├── config/
+    │   ├── internal/
+    │   │   ├── database/
+    │   │   ├── models/
+    │   │   ├── handlers/
+    │   │   ├── middleware/
+    │   │   ├── grpc_service/
+    │   │   ├── chat/
+    │   │   └── notification/
+    │   ├── uploads/
+    │   └── .env
+    │
+    └── frontend/
+        ├── app/
+        ├── components/
+        ├── contexts/
+        ├── hooks/
+        ├── libs/
+        ├── types/
+        └── .env.local
 
 ---
 
