@@ -13,7 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/midtrans/midtrans-go"
-    
+
 	"github.com/akhdanrgya/telu-hub/internal/notification"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -33,7 +33,7 @@ func main() {
 	if clientURL == "" {
 		clientURL = "http://localhost:3000"
 	}
-    log.Printf("🌍 Client URL set to: %s", clientURL)
+	log.Printf("🌍 Client URL set to: %s", clientURL)
 
 	midtrans.ServerKey = config.GetMidtransServerKey()
 	midtrans.ClientKey = config.GetMidtransClientKey()
@@ -42,7 +42,7 @@ func main() {
 	database.InitDB()
 	db := database.DB
 
-	database.SeedAdmin(db)
+	database.SeedAll(db)
 
 	stockService := grpc_service.NewStockService()
 
@@ -51,8 +51,8 @@ func main() {
 	notifService := notification.NewService(db, notifHub)
 
 	grpcServer := runGrpcServer(stockService, ":50051")
-	
-	go runGrpcWebServer(grpcServer, ":8081", clientURL) 
+
+	go runGrpcWebServer(grpcServer, ":8081", clientURL)
 
 	app := fiber.New()
 	app.Use(logger.New())
@@ -95,7 +95,7 @@ func runGrpcWebServer(grpcServer *grpc.Server, port string, allowedOrigin string
 	wrappedGrpc := grpcweb.WrapServer(
 		grpcServer,
 		grpcweb.WithOriginFunc(func(origin string) bool {
-			return origin == allowedOrigin 
+			return origin == allowedOrigin
 		}),
 	)
 
@@ -103,7 +103,7 @@ func runGrpcWebServer(grpcServer *grpc.Server, port string, allowedOrigin string
 		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, x-grpc-web, X-User-Agent, Authorization, grpc-timeout")
-        w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)

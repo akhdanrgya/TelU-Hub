@@ -28,6 +28,9 @@ type Product struct {
 
 	SellerID uint `gorm:"not null"`
 	Seller   *User `gorm:"foreignKey:SellerID"`
+
+	CategoryID uint     `json:"category_id"`
+	Category   Category `json:"category" gorm:"foreignKey:CategoryID"`
 }
 
 
@@ -71,4 +74,12 @@ type OrderItem struct {
 
 	Order   *Order   `gorm:"foreignKey:OrderID"`
 	Product *Product `gorm:"foreignKey:ProductID"`
+}
+
+type Category struct {
+	gorm.Model
+	Name string `json:"name" gorm:"unique;not null"`
+	Slug string `json:"slug" gorm:"unique;not null"`
+	
+	Products []Product `json:"products,omitempty" gorm:"foreignKey:CategoryID"`
 }

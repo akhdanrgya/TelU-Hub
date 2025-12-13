@@ -75,6 +75,7 @@ const ProductDetailPage = () => {
             fill
             style={{ objectFit: "cover" }}
             priority
+            unoptimized={true}
           />
         </div>
         

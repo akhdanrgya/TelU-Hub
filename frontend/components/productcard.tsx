@@ -29,6 +29,7 @@ export const ProductCard = ({ product }: { product: Product }) => {
               fill
               style={{ objectFit: "cover" }}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              unoptimized={true}
             />
           </div>
         </NextLink>

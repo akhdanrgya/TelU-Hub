@@ -1,120 +1,66 @@
-# version: '3.8'
-
-# services:
-#   db:
-#     image: postgres:16
-#     container_name: gokiltech-postgres
-#     restart: always
-#     environment:
-#       POSTGRES_USER: akhdan
-#       POSTGRES_PASSWORD: Adanarya!
-#       POSTGRES_DB: gokiltech
-#     ports:
-#       - "5432:5432"
-#     volumes:
-#       - pgdata-gokiltech:/var/lib/postgresql/data
-#     networks:
-#       - gokiltech-net
-
-#   pgadmin:
-#     image: dpage/pgadmin4
-#     container_name: gokiltech-pgadmin
-#     restart: always
-#     environment:
-#       PGADMIN_DEFAULT_EMAIL: admin@gokiltech.com
-#       PGADMIN_DEFAULT_PASSWORD: Adanarya!
-#     ports:
-#       - "5050:80"
-#     volumes:
-#       - pgadmin-data:/var/lib/pgadmin
-#     networks:
-#       - gokiltech-net
-#     depends_on:
-#       - db
-
-# networks:
-#   gokiltech-net:
-#     driver: bridge
-
-# volumes:
-#   pgdata-gokiltech:
-#   pgadmin-data:
-
-version: '3.8'
-
 services:
-  # --- Database & Services ---
+  # 1. Database Utama
   postgres:
     image: postgres:15-alpine
+    container_name: teluhub_db
+    restart: always
+    env_file:
+      - ./.env
     environment:
-      POSTGRES_USER: akhdan
-      POSTGRES_PASSWORD: Adanarya!
-      POSTGRES_DB: teluhub_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-  meilisearch:
-    image: getmeili/meilisearch:v1.3
-    environment:
-      MEILI_MASTER_KEY: c3b3a7ded303e8cd5a04b696f221d2abaec1af45
-    ports:
-      - "7700:7700"
-    volumes:
-      - meili_data:/meili_data
-
-  # --- Aplikasi Kita ---
+  # 2. Backend (Go Fiber)
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: DockerFile
+    container_name: teluhub_backend
+    restart: always
     ports:
-      - "8910:8910"
+      - "8910:8910"  # Port Fiber
+      - "50051:50051" # Port gRPC Internal (Opsional diexpose)
+      - "8081:8081"   # Port gRPC-Web Proxy
+    env_file:
+      - ./.env
     environment:
       - PORT=8910
-      - DB_HOST=postgres # Nama service di atas
+      - DB_HOST=postgres # Nembak ke service postgres di atas
       - DB_PORT=5432
-      - DB_USER=akhdan
-      - DB_PASSWORD=Adanarya!
-      - DB_NAME=teluhub_db
-      - REDIS_ADDR=redis:6379 # Nama service di atas
-      - MEILISEARCH_HOST=http://meilisearch:7700 # Nama service di atas
-      - MEILISEARCH_KEY=c3b3a7ded303e8cd5a04b696f221d2abaec1af45
-      - JWT_SECRET=c3b3a7ded303e8cd5a04b696f221d2abaec1af45
-      - MIDTRANS_SERVER_KEY=SB-Mid-server-xcG6gMAtEQYXj32I7IbXMeAl
-      - MIDTRANS_CLIENT_KEY=SB-Mid-client-OokJFWTl8SB1va_j
-      - CLIENT_URL=http://localhost:3000
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
+      - CLIENT_URL=${CLIENT_URL}
     depends_on:
       - postgres
-      - redis
-      - meilisearch
     volumes:
-       # Mapping folder uploads biar file gak ilang pas container mati di lokal
-      - ./backend/uploads:/root/uploads
+      - ./backend/uploads:/root/uploads # Biar foto gak ilang pas restart
 
+  # 3. Frontend (Next.js)
   frontend:
+    env_file:
+      - ./.env
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: DockerFile
       args:
-        # Di lokal, frontend nembak ke backend via localhost browser
-        NEXT_PUBLIC_API_BASE_URL: http://localhost:8910/api/v1
+        # URL API Backend (Domain Publik / HTTPS)
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+    container_name: teluhub_frontend
+    restart: always
     ports:
       - "3000:3000"
-    environment:
-      # - NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=...
     depends_on:
       - backend
 
 volumes:
   postgres_data:
-  redis_data:
-  meili_data:
