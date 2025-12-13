@@ -1,41 +1,120 @@
+# version: '3.8'
+
+# services:
+#   db:
+#     image: postgres:16
+#     container_name: gokiltech-postgres
+#     restart: always
+#     environment:
+#       POSTGRES_USER: akhdan
+#       POSTGRES_PASSWORD: Adanarya!
+#       POSTGRES_DB: gokiltech
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - pgdata-gokiltech:/var/lib/postgresql/data
+#     networks:
+#       - gokiltech-net
+
+#   pgadmin:
+#     image: dpage/pgadmin4
+#     container_name: gokiltech-pgadmin
+#     restart: always
+#     environment:
+#       PGADMIN_DEFAULT_EMAIL: admin@gokiltech.com
+#       PGADMIN_DEFAULT_PASSWORD: Adanarya!
+#     ports:
+#       - "5050:80"
+#     volumes:
+#       - pgadmin-data:/var/lib/pgadmin
+#     networks:
+#       - gokiltech-net
+#     depends_on:
+#       - db
+
+# networks:
+#   gokiltech-net:
+#     driver: bridge
+
+# volumes:
+#   pgdata-gokiltech:
+#   pgadmin-data:
+
 version: '3.8'
 
 services:
-  db:
-    image: postgres:16
-    container_name: gokiltech-postgres
-    restart: always
+  # --- Database & Services ---
+  postgres:
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: akhdan
       POSTGRES_PASSWORD: Adanarya!
-      POSTGRES_DB: gokiltech
+      POSTGRES_DB: teluhub_db
     ports:
       - "5432:5432"
     volumes:
-      - pgdata-gokiltech:/var/lib/postgresql/data
-    networks:
-      - gokiltech-net
+      - postgres_data:/var/lib/postgresql/data
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: gokiltech-pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@gokiltech.com
-      PGADMIN_DEFAULT_PASSWORD: Adanarya!
+  redis:
+    image: redis:7-alpine
     ports:
-      - "5050:80"
+      - "6379:6379"
     volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    networks:
-      - gokiltech-net
-    depends_on:
-      - db
+      - redis_data:/data
 
-networks:
-  gokiltech-net:
-    driver: bridge
+  meilisearch:
+    image: getmeili/meilisearch:v1.3
+    environment:
+      MEILI_MASTER_KEY: c3b3a7ded303e8cd5a04b696f221d2abaec1af45
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+
+  # --- Aplikasi Kita ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8910:8910"
+    environment:
+      - PORT=8910
+      - DB_HOST=postgres # Nama service di atas
+      - DB_PORT=5432
+      - DB_USER=akhdan
+      - DB_PASSWORD=Adanarya!
+      - DB_NAME=teluhub_db
+      - REDIS_ADDR=redis:6379 # Nama service di atas
+      - MEILISEARCH_HOST=http://meilisearch:7700 # Nama service di atas
+      - MEILISEARCH_KEY=c3b3a7ded303e8cd5a04b696f221d2abaec1af45
+      - JWT_SECRET=c3b3a7ded303e8cd5a04b696f221d2abaec1af45
+      - MIDTRANS_SERVER_KEY=SB-Mid-server-xcG6gMAtEQYXj32I7IbXMeAl
+      - MIDTRANS_CLIENT_KEY=SB-Mid-client-OokJFWTl8SB1va_j
+      - CLIENT_URL=http://localhost:3000
+    depends_on:
+      - postgres
+      - redis
+      - meilisearch
+    volumes:
+       # Mapping folder uploads biar file gak ilang pas container mati di lokal
+      - ./backend/uploads:/root/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Di lokal, frontend nembak ke backend via localhost browser
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8910/api/v1
+    ports:
+      - "3000:3000"
+    environment:
+      # - NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=...
+    depends_on:
+      - backend
 
 volumes:
-  pgdata-gokiltech:
-  pgadmin-data:
+  postgres_data:
+  redis_data:
+  meili_data:

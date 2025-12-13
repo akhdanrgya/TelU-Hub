@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/akhdanrgya/telu-hub/config"
 	"github.com/akhdanrgya/telu-hub/internal/database"
@@ -12,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/midtrans/midtrans-go"
+    
 	"github.com/akhdanrgya/telu-hub/internal/notification"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -27,6 +29,12 @@ func main() {
 		log.Fatalf("ERROR: Gagal nge-load config: %v", err)
 	}
 
+	clientURL := os.Getenv("CLIENT_URL")
+	if clientURL == "" {
+		clientURL = "http://localhost:3000"
+	}
+    log.Printf("🌍 Client URL set to: %s", clientURL)
+
 	midtrans.ServerKey = config.GetMidtransServerKey()
 	midtrans.ClientKey = config.GetMidtransClientKey()
 	midtrans.Environment = midtrans.Sandbox
@@ -35,27 +43,28 @@ func main() {
 	db := database.DB
 
 	stockService := grpc_service.NewStockService()
-    
-	grpcServer := runGrpcServer(stockService, ":50051")
-	go runGrpcWebServer(grpcServer, ":8081")
 
 	notifHub := notification.NewNotificationHub()
-	go notifHub.Run() // Jalanin Kantor Pos di background
+	go notifHub.Run()
 	notifService := notification.NewService(db, notifHub)
 
-	app := fiber.New()
+	grpcServer := runGrpcServer(stockService, ":50051")
 	
+	go runGrpcWebServer(grpcServer, ":8081", clientURL) 
+
+	app := fiber.New()
 	app.Use(logger.New())
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000",
+		AllowOrigins:     clientURL,
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, x-grpc-web",
+		AllowCredentials: true,
 		AllowMethods:     "GET, POST, PUT, DELETE, PATCH, OPTIONS",
 	}))
 
 	app.Static("/uploads", "./uploads")
 
-	handlers.SetupRoutes(app, db, stockService,notifService)
+	handlers.SetupRoutes(app, db, stockService, notifService)
 
 	port := config.GetAppPort()
 	log.Printf("🔥 Server Fiber jalan di port %s", port)
@@ -80,18 +89,19 @@ func runGrpcServer(stockSvc *grpc_service.StockService, port string) *grpc.Serve
 	return grpcServer
 }
 
-func runGrpcWebServer(grpcServer *grpc.Server, port string) {
+func runGrpcWebServer(grpcServer *grpc.Server, port string, allowedOrigin string) {
 	wrappedGrpc := grpcweb.WrapServer(
 		grpcServer,
 		grpcweb.WithOriginFunc(func(origin string) bool {
-			return origin == "http://localhost:3000"
+			return origin == allowedOrigin 
 		}),
 	)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, x-grpc-web, X-User-Agent, Authorization, grpc-timeout")
+        w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -111,7 +121,7 @@ func runGrpcWebServer(grpcServer *grpc.Server, port string) {
 		Handler: handler,
 	}
 
-	log.Printf("👨‍🚀 Server gRPC-Web (Proxy) jalan di port %s", port)
+	log.Printf("👨‍🚀 Server gRPC-Web (Proxy) jalan di port %s, Allow Origin: %s", port, allowedOrigin)
 	if err := httpServer.ListenAndServe(); err != nil {
 		log.Fatalf("Gagal 'serve' gRPC-Web: %v", err)
 	}

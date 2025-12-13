@@ -1,0 +1,43 @@
+# --- Stage 1: Build ---
+# Pake image Golang resmi versi alpine biar kecil
+FROM golang:1.21-alpine AS builder
+
+# Install git dan sertifikat SSL (dibutuhkan untuk go mod download)
+RUN apk update && apk add --no-cache git ca-certificates tzdata
+
+# Set folder kerja di dalam container
+WORKDIR /app
+
+# Copy file go.mod dan go.sum dulu (biar bisa di-cache layernya)
+COPY go.mod go.sum ./
+
+# Download semua dependensi
+RUN go mod download
+
+# Copy semua source code sisanya
+COPY . .
+
+# Build aplikasinya jadi binary
+# CGO_ENABLED=0 bikin binary-nya statis, gak butuh library C eksternal
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
+
+# --- Stage 2: Run ---
+# Pake image alpine kosong yang super kecil untuk ngejalanin doang
+FROM alpine:latest
+
+# Install CA certificates dan timezone data lagi buat runtime
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /root/
+
+# Copy file binary hasil build dari Stage 1 tadi
+COPY --from=builder /app/main .
+# Copy folder uploads (PENTING: karena lo nyimpen gambar di sini)
+# Pastiin folder ini ada dulu di lokal lo, minimal kosong dg .gitkeep
+COPY --from=builder /app/uploads ./uploads
+
+# Expose port (sesuai yang lo pake di aplikasi Go lo, misal 8910)
+EXPOSE 8910
+
+# Perintah untuk ngejalanin aplikasi
+CMD ["./main"]
