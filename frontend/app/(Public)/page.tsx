@@ -203,8 +203,8 @@ const HomePage = () => {
             <div className="text-center py-20">
               <p className="text-lg text-default-500">
                 {selectedCategory === "all"
-                  ? "Belum ada produk sama sekali. Jadilah yang pertama!"
-                  : "Produk di kategori ini lagi kosong, King. Coba kategori lain."}
+                  ? "Belum ada produk sama sekali."
+                  : "Produk di kategori ini lagi kosong. Coba kategori lain."}
               </p>
             </div>
           ) : (

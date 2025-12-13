@@ -49,7 +49,6 @@ export default function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortOption, setSortOption] = useState("newest");
 
-  // --- 1. FETCH DATA (OTAK UTAMA) ---
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -59,13 +58,11 @@ export default function ShopPage() {
           api.get("/categories"),
         ]);
 
-        // Handle Products
         const productsData = Array.isArray(productsRes.data)
           ? productsRes.data
           : productsRes.data?.data || [];
         setProducts(productsData);
 
-        // Handle Categories
         const categoriesData = Array.isArray(categoriesRes.data)
           ? categoriesRes.data
           : categoriesRes.data?.data || [];
@@ -81,9 +78,8 @@ export default function ShopPage() {
   }, []);
 
   // --- 2. FILTERING LOGIC (MESIN PEMROSES) ---
-  // Pake useMemo biar gak render ulang kalo gak perlu. Ini performa King! ⚡
   const processedProducts = useMemo(() => {
-    let result = [...products]; // Copy array biar original gak rusak
+    let result = [...products];
 
     // A. Logic Search (Case Insensitive)
     if (searchQuery) {
@@ -153,7 +149,7 @@ export default function ShopPage() {
       <div className="sticky top-16 z-20 mb-8 rounded-xl border border-default-200 bg-background/80 p-4 shadow-sm backdrop-blur-md">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
           
-          {/* 1. SEARCH BAR (Makan 6 kolom) */}
+          {/* 1. SEARCH BAR */}
           <div className="md:col-span-6">
             <Input
               isClearable
@@ -165,13 +161,12 @@ export default function ShopPage() {
             />
           </div>
 
-          {/* 2. CATEGORY DROPDOWN (Makan 3 kolom) */}
+          {/* 2. CATEGORY DROPDOWN */}
           <div className="md:col-span-3">
             <Select
               placeholder="Kategori"
               selectedKeys={[selectedCategory]}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              // 🔥 GABUNGIN ITEM MANUAL + DB BIAR TYPE AMAN
               items={[
                 { id: 99999, name: "Semua Kategori", slug: "all" },
                 ...categories,
@@ -185,7 +180,7 @@ export default function ShopPage() {
             </Select>
           </div>
 
-          {/* 3. SORT DROPDOWN (Makan 3 kolom) */}
+          {/* 3. SORT DROPDOWN */}
           <div className="md:col-span-3">
             <Select
               placeholder="Urutkan"
@@ -207,7 +202,6 @@ export default function ShopPage() {
         renderSkeletons()
       ) : processedProducts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="text-6xl mb-4">🕵️‍♂️</div>
             <h3 className="text-xl font-bold">Produk tidak ditemukan</h3>
             <p className="text-default-500 mb-6">Coba ganti kata kunci atau reset filter lo, King.</p>
             <Button 
