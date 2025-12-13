@@ -9,6 +9,7 @@ import { Link } from "@heroui/link";
 import NextLink from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStockStream } from "@/hooks/useStockStream";
+import { Chip } from "@heroui/chip"; // 👈 Import Chip buat Badge Keren
 
 export const ProductCard = ({ product }: { product: Product }) => {
   const { addToCart, loadingCart } = useAuth();
@@ -18,16 +19,24 @@ export const ProductCard = ({ product }: { product: Product }) => {
     addToCart(product.id, 1);
   };
 
+  const currentStock = liveStock !== null ? liveStock : product.stock;
+
   return (
-    <div className="rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+    <div className="group rounded-lg border bg-card text-card-foreground shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
       <div>
         <NextLink href={`/products/${product.slug}`} passHref>
-          <div className="relative aspect-square w-full overflow-hidden rounded-t-lg">
+          <div className="relative aspect-square w-full overflow-hidden rounded-t-lg bg-gray-100">
+            <div className="absolute top-2 left-2 z-10">
+              <Chip size="sm" color="secondary" variant="flat" className="capitalize">
+                {product.category?.name || "Uncategorized"}
+              </Chip>
+            </div>
+
             <NextImage
               src={product.image_url}
               alt={product.name}
               fill
-              style={{ objectFit: "cover" }}
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               unoptimized={true}
             />
@@ -44,18 +53,23 @@ export const ProductCard = ({ product }: { product: Product }) => {
             </h3>
           </NextLink>
 
-          <p className="mt-1 text-base font-bold text-primary">
+          <p className="mt-1 text-lg font-bold text-primary">
             Rp {product.price.toLocaleString("id-ID")}
           </p>
-          <p className="text-sm text-default-600 mt-1">Stok: {liveStock !== null ? liveStock : product.stock}</p>
-          <p className="text-sm text-default-500 mt-1 truncate">
-            dijual oleh:{" "}
+          
+          <div className="flex justify-between items-center mt-2 text-sm text-default-500">
+             <span>Stok: <span className={currentStock < 5 ? "text-red-500 font-bold" : ""}>{currentStock}</span></span>
+          </div>
+
+          <p className="text-xs text-default-400 mt-1 truncate">
+            Penjual:{" "}
             <Link
               as={NextLink}
-              href={`/profile/${product.seller.username}`}
-              color="primary"
+              href={`/profile/${product.seller?.username}`}
+              className="text-xs hover:underline"
+              color="foreground"
             >
-              {product.seller.username}
+              {product.seller?.username || "Unknown"}
             </Link>
           </p>
         </div>
@@ -64,14 +78,13 @@ export const ProductCard = ({ product }: { product: Product }) => {
       <div className="flex items-center p-4 pt-0">
         <Button
           color="primary"
-          className="w-full"
+          className="w-full font-medium"
           onPress={handleAddToCartClick}
-          disabled={product.stock === 0 || loadingCart}
+          disabled={currentStock === 0 || loadingCart}
           isLoading={loadingCart}
+          variant={currentStock === 0 ? "flat" : "solid"}
         >
-            {(liveStock !== null ? liveStock : product.stock) === 0 
-              ? "Stok Habis" 
-              : "Tambah ke Keranjang"}
+            {currentStock === 0 ? "Stok Habis" : "Tambah ke Keranjang"}
         </Button>
       </div>
     </div>

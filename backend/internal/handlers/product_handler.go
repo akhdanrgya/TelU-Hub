@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/akhdanrgya/telu-hub/internal/models" 
+	"github.com/akhdanrgya/telu-hub/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gosimple/slug"
 	"gorm.io/gorm"
@@ -21,19 +21,26 @@ type CreateProductInput struct {
 	Price       float64 `json:"price" validate:"required,gt=0"`
 	Stock       int     `json:"stock" validate:"required,gte=0"`
 	ImageURL    string  `json:"image_url"`
+	CategoryID  uint    `json:"category_id" validate:"required"`
+}
+
+type CategoryResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 type ProductResponse struct {
-	ID          uint         `json:"id"`
-	Name        string       `json:"name"`
-    Slug        string       `json:"slug"`
-	Description string       `json:"description"`
-	Price       float64      `json:"price"`
-	Stock       int          `json:"stock"`
-	ImageURL    string       `json:"image_url"`
-	Seller      UserResponse `json:"seller"` 
+	ID          uint             `json:"id"`
+	Name        string           `json:"name"`
+	Slug        string           `json:"slug"`
+	Description string           `json:"description"`
+	Price       float64          `json:"price"`
+	Stock       int              `json:"stock"`
+	ImageURL    string           `json:"image_url"`
+	Seller      UserResponse     `json:"seller"`
+	Category    CategoryResponse `json:"category"` // 🔥 AKHIRNYA ADA!
 }
-
 
 func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	sellerID := c.Locals("user_id").(uint)
@@ -41,8 +48,8 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	if err := c.BodyParser(input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Data request tidak valid"})
 	}
-    
-    productSlug := slug.Make(input.Name)
+
+	productSlug := slug.Make(input.Name)
 
 	product := models.Product{
 		Name:        input.Name,
@@ -51,7 +58,8 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 		Price:       input.Price,
 		Stock:       input.Stock,
 		ImageURL:    input.ImageURL,
-		SellerID:    sellerID, 
+		SellerID:    sellerID,
+		CategoryID:  input.CategoryID,
 	}
 
 	if err := h.DB.Create(&product).Error; err != nil {
@@ -60,14 +68,13 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan produk"})
 	}
-    
+
 	return c.Status(fiber.StatusCreated).JSON(product)
 }
 
-
 func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 	var products []models.Product
-	if err := h.DB.Preload("Seller").Find(&products).Error; err != nil {
+	if err := h.DB.Preload("Seller").Preload("Category").Find(&products).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data produk"})
 	}
 
@@ -81,10 +88,15 @@ func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 			Price:       p.Price,
 			Stock:       p.Stock,
 			ImageURL:    p.ImageURL,
-			Seller: UserResponse{ 
+			Seller: UserResponse{
 				ID:       p.Seller.ID,
 				Username: p.Seller.Username,
 				Email:    p.Seller.Email,
+			},
+			Category: CategoryResponse{
+				ID:   p.Category.ID,
+				Name: p.Category.Name,
+				Slug: p.Category.Slug,
 			},
 		})
 	}
@@ -96,13 +108,12 @@ func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-
 func (h *ProductHandler) GetProductBySlug(c *fiber.Ctx) error {
-	slug := c.Params("slug") 
+	slug := c.Params("slug")
 	if slug == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Slug produk tidak boleh kosong"})
 	}
-    
+
 	var product models.Product
 
 	if err := h.DB.Preload("Seller").Where("slug = ?", slug).First(&product).Error; err != nil {
@@ -125,17 +136,22 @@ func (h *ProductHandler) GetProductBySlug(c *fiber.Ctx) error {
 			Username: product.Seller.Username,
 			Email:    product.Seller.Email,
 		},
+		Category: CategoryResponse{
+			ID:   product.Category.ID,
+			Name: product.Category.Name,
+			Slug: product.Category.Slug,
+		},
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
-	id := c.Params("id") 
+	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID produk tidak boleh kosong"})
 	}
-    
+
 	var product models.Product
 
 	if err := h.DB.Preload("Seller").Where("id = ?", id).First(&product).Error; err != nil {
@@ -158,6 +174,11 @@ func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
 			Username: product.Seller.Username,
 			Email:    product.Seller.Email,
 		},
+		Category: CategoryResponse{
+			ID:   product.Category.ID,
+			Name: product.Category.Name,
+			Slug: product.Category.Slug,
+		},
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -165,7 +186,9 @@ func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
 
 func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(uint)
-	if !ok { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) }
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
 	role, _ := c.Locals("user_role").(string)
 	productID := c.Params("id")
 
@@ -189,10 +212,11 @@ func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(product)
 }
 
-
 func (h *ProductHandler) DeleteProduct(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(uint)
-	if !ok { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) }
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
 	role, _ := c.Locals("user_role").(string)
 	productID := c.Params("id")
 
@@ -211,28 +235,20 @@ func (h *ProductHandler) DeleteProduct(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Produk berhasil dihapus"})
 }
 
-
 func (h *ProductHandler) GetMyProducts(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(uint)
-	if !ok { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) }
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
 
 	var products []models.Product
-	if err := h.DB.Where("seller_id = ?", userID).Find(&products).Error; err != nil {
+	if err := h.DB.Preload("Category").Where("seller_id = ?", userID).Find(&products).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data produk"})
 	}
-	type MyProductResponse struct {
-		ID          uint    `json:"id"`
-		Name        string  `json:"name"`
-		Slug        string  `json:"slug"`
-		Description string  `json:"description"`
-		Price       float64 `json:"price"`
-		Stock       int     `json:"stock"`
-		ImageURL    string  `json:"image_url"`
-	}
 
-	var response []MyProductResponse
+	var response []ProductResponse
 	for _, p := range products {
-		response = append(response, MyProductResponse{
+		response = append(response, ProductResponse{
 			ID:          p.ID,
 			Name:        p.Name,
 			Slug:        p.Slug,
@@ -240,12 +256,17 @@ func (h *ProductHandler) GetMyProducts(c *fiber.Ctx) error {
 			Price:       p.Price,
 			Stock:       p.Stock,
 			ImageURL:    p.ImageURL,
+			Category: CategoryResponse{
+				ID:   p.Category.ID,
+				Name: p.Category.Name,
+				Slug: p.Category.Slug,
+			},
 		})
 	}
 
 	if response == nil {
-		response = make([]MyProductResponse, 0)
+		response = make([]ProductResponse, 0)
 	}
-	
+
 	return c.Status(fiber.StatusOK).JSON(response)
 }

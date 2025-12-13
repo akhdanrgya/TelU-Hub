@@ -17,6 +17,12 @@ export interface Notification {
   created_at: string;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export interface SellerResponse {
   id:       number;
   username: string;
@@ -32,6 +38,8 @@ export interface Product {
   stock:       number;
   image_url:   string;
   seller:      SellerResponse;
+  category_id: number;
+  category: Category;
 }
 
 export interface User {
@@ -84,3 +92,4 @@ export interface Order {
   created_at:   string;
   OrderItems:   OrderItem[];
 }
+

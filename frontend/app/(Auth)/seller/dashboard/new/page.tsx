@@ -1,29 +1,59 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import api from "@/libs/api";
-import { Input } from "@heroui/input";
-import { Textarea } from "@heroui/input";
+import { Input, Textarea } from "@heroui/input"; // Gabungin import biar rapi
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
 import { Card, CardHeader, CardBody } from "@heroui/card";
-import { Image } from "@heroui/image"; // Buat preview gambar
+import { Image } from "@heroui/image";
+import { Select, SelectItem } from "@heroui/select"; // 👈 Import Select & SelectItem
+
+// Definisi tipe simpel buat Category
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+}
 
 const AddProductPage = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  // State Form
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
+  
+  // 🔥 State Kategori
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState<string>(""); // Pake string dulu buat handling form input
+
+  // State Image
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  
+  // State UI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  // 1️⃣ Fetch Kategori pas component dimuat
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get("/categories");
+        const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setCategories(data);
+      } catch (err) {
+        console.error("Gagal ambil kategori", err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   if (authLoading) {
     return <div className="text-center p-10"><Spinner size="lg" /></div>;
@@ -57,6 +87,9 @@ const AddProductPage = () => {
     if (!price || parseFloat(price) <= 0) currentFormErrors.price = "Harga harus angka positif.";
     if (!stock || parseInt(stock) <= 0) currentFormErrors.stock = "Stok harus angka positif.";
     if (!imageFile) currentFormErrors.imageFile = "Gambar produk harus diupload.";
+    
+    // 🔥 Validasi Kategori
+    if (!categoryId) currentFormErrors.category = "Pilih kategori dulu dong, King.";
 
     if (Object.keys(currentFormErrors).length > 0) {
       setFormErrors(currentFormErrors);
@@ -66,24 +99,25 @@ const AddProductPage = () => {
 
     let imageUrl = ""; 
     try {
+      // 1. Upload Image
       if (imageFile) {
         const formData = new FormData();
         formData.append("image", imageFile); 
 
         const uploadResponse = await api.post("/upload/image", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data", 
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
         imageUrl = uploadResponse.data.imageUrl; 
       }
 
+      // 2. Submit Product Data
       await api.post("/products", {
         name,
         description,
         price: parseFloat(price),
         stock: parseInt(stock),
         image_url: imageUrl, 
+        category_id: parseInt(categoryId), // 🔥 Kirim ID Kategori (convert string to number)
       });
 
       router.push("/"); 
@@ -111,6 +145,25 @@ const AddProductPage = () => {
               errorMessage={formErrors.name}
               required
             />
+            
+            {/* 🔥 DROPDOWN KATEGORI DI SINI */}
+            <Select 
+                label="Kategori" 
+                placeholder="Pilih kategori produk"
+                selectedKeys={categoryId ? [categoryId] : []}
+                onChange={(e) => setCategoryId(e.target.value)}
+                isInvalid={!!formErrors.category}
+                errorMessage={formErrors.category}
+                items={categories} // 👈 Pake props items biar aman dari error TS
+            >
+                {(item) => (
+                    // Value pake ID (stringified otomatis sama HTML select)
+                    <SelectItem key={String(item.name)} textValue={item.name}>
+                        {item.name}
+                    </SelectItem>
+                )}
+            </Select>
+
             <Textarea
               label="Deskripsi"
               placeholder="Tulis deskripsi produk"
@@ -120,31 +173,36 @@ const AddProductPage = () => {
               errorMessage={formErrors.description}
               required
             />
-            <Input
-              label="Harga"
-              placeholder="0.00"
-              type="number"
-              value={price}
-              onValueChange={setPrice}
-              startContent={
-                <div className="pointer-events-none flex items-center">
-                  <span className="text-default-400 text-small">Rp</span>
-                </div>
-              }
-              isInvalid={!!formErrors.price}
-              errorMessage={formErrors.price}
-              required
-            />
-            <Input
-              label="Stok"
-              placeholder="0"
-              type="number"
-              value={stock}
-              onValueChange={setStock}
-              isInvalid={!!formErrors.stock}
-              errorMessage={formErrors.stock}
-              required
-            />
+            
+            <div className="flex gap-4">
+                <Input
+                label="Harga"
+                placeholder="0"
+                type="number"
+                value={price}
+                onValueChange={setPrice}
+                startContent={
+                    <div className="pointer-events-none flex items-center">
+                    <span className="text-default-400 text-small">Rp</span>
+                    </div>
+                }
+                isInvalid={!!formErrors.price}
+                errorMessage={formErrors.price}
+                required
+                className="flex-1"
+                />
+                <Input
+                label="Stok"
+                placeholder="0"
+                type="number"
+                value={stock}
+                onValueChange={setStock}
+                isInvalid={!!formErrors.stock}
+                errorMessage={formErrors.stock}
+                required
+                className="w-1/3"
+                />
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-default-700">
@@ -161,13 +219,13 @@ const AddProductPage = () => {
               />
 
               {imagePreviewUrl && (
-                <div className="mt-4 flex flex-col items-center">
-                  <p className="text-sm text-default-500 mb-2">Preview:</p>
+                <div className="mt-4 flex flex-col items-center p-2 border rounded-lg bg-gray-50">
+                  <p className="text-xs text-default-500 mb-2">Preview:</p>
                   <Image
                     src={imagePreviewUrl}
                     alt="Image Preview"
-                    width={200}
-                    height={200}
+                    width={150}
+                    height={150}
                     className="rounded-lg object-cover"
                   />
                 </div>
@@ -175,11 +233,11 @@ const AddProductPage = () => {
             </div>
 
             {error && (
-              <p className="text-danger text-sm text-center">{error}</p>
+              <p className="text-danger text-sm text-center font-semibold bg-danger-50 p-2 rounded">{error}</p>
             )}
 
-            <Button type="submit" color="primary" className="w-full" isLoading={loading}>
-              {loading ? <Spinner color="white" size="sm" /> : "Tambah Produk"}
+            <Button type="submit" color="primary" className="w-full font-bold text-lg" isLoading={loading}>
+              {loading ? <Spinner color="white" size="sm" /> : "Upload Produk"}
             </Button>
           </form>
         </CardBody>

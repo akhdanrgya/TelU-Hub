@@ -21,6 +21,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockSe
 	userHandler := NewUserHandler(db)
 	orderHandler := NewOrderHandler(db, stockService, notifService)
 	notifHandler := notification.NewHandler(notifService)
+	categoryHandler := NewCategoryHandler(db)
 
 
 	api := app.Group("/api/v1")
@@ -51,6 +52,8 @@ func SetupRoutes(app *fiber.App, db *gorm.DB, stockService *grpc_service.StockSe
 		products.Post("/", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.CreateProduct)
 		products.Put("/:id", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.UpdateProduct)
 		products.Delete("/:id", middleware.Protected(), middleware.RoleRequired("seller", "admin"), productHandler.DeleteProduct)
+	
+	api.Get("/categories", categoryHandler.GetAllCategories)
 		
 		
 	cart := api.Group("/cart", middleware.Protected())

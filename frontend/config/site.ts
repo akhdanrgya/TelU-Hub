@@ -15,10 +15,6 @@ export const siteConfig = {
       href: "/shop",
     },
     {
-      label: "Kategori",
-      href: "/categories",
-    },
-    {
       label: "Tentang Kami",
       href: "/about",
     },
@@ -34,16 +30,12 @@ export const siteConfig = {
       href: "/orders",
     },
     {
-      label: "Pengaturan",
-      href: "/settings",
+      label: "Shop",
+      href: "/shop",
     },
     {
-      label: "Bantuan",
-      href: "/help",
-    },
-    {
-      label: "Logout",
-      href: "/logout",
+      label: "Tentang Kami",
+      href: "/about",
     },
   ],
   
