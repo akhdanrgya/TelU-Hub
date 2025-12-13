@@ -279,7 +279,7 @@ export default function AboutPage() {
               variant="bordered"
               color="primary"
               size="lg"
-              className="font-bold px-8 text-white border-white hover:bg-white/10"
+              className="font-bold px-8 border-primary hover:bg-white/10"
             >
               Lihat Produk
             </Button>
