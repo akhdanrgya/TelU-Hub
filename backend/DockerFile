@@ -1,6 +1,6 @@
 # --- Stage 1: Build ---
 # Pake image Golang resmi versi alpine biar kecil
-FROM golang:1.21-alpine AS builder
+FROM golang:alpine AS builder
 
 # Install git dan sertifikat SSL (dibutuhkan untuk go mod download)
 RUN apk update && apk add --no-cache git ca-certificates tzdata

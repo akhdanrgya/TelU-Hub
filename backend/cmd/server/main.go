@@ -42,6 +42,8 @@ func main() {
 	database.InitDB()
 	db := database.DB
 
+	database.SeedAdmin(db)
+
 	stockService := grpc_service.NewStockService()
 
 	notifHub := notification.NewNotificationHub()
