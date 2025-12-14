@@ -39,6 +39,7 @@ services:
       - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
       - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
       - CLIENT_URL=${CLIENT_URL}
+      - SERVER_URL=${SERVER_URL}
     depends_on:
       - postgres
     volumes:
