@@ -89,7 +89,7 @@ func seedCategoriesAndProducts(db *gorm.DB) {
 	db.Where("slug = ?", "electronics").First(&catElek)
 	db.Where("slug = ?", "clothing").First(&catCloth)
 
-	clientURL := os.Getenv("CLIENT_URL")
+	clientURL := os.Getenv("SERVER_URL")
 
 	baseURL := clientURL + "/uploads/"
 
