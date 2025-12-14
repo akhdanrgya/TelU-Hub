@@ -3,6 +3,7 @@ package database
 import (
 	"log"
 	"strings"
+	"os"
 
 	"github.com/akhdanrgya/telu-hub/internal/models"
 	"golang.org/x/crypto/bcrypt"
@@ -88,7 +89,9 @@ func seedCategoriesAndProducts(db *gorm.DB) {
 	db.Where("slug = ?", "electronics").First(&catElek)
 	db.Where("slug = ?", "clothing").First(&catCloth)
 
-	baseURL := "http://127.0.0.1:8910/uploads/"
+	clientURL := os.Getenv("CLIENT_URL")
+
+	baseURL := clientURL + "/uploads/"
 
 	products := []models.Product{
 		{
