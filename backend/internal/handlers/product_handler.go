@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strconv"
+
 	"github.com/akhdanrgya/telu-hub/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gosimple/slug"
@@ -109,42 +111,50 @@ func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 }
 
 func (h *ProductHandler) GetProductBySlug(c *fiber.Ctx) error {
-	slug := c.Params("slug")
-	if slug == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Slug produk tidak boleh kosong"})
-	}
+    identifier := c.Params("slug")
+    if identifier == "" {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Parameter tidak boleh kosong"})
+    }
 
-	var product models.Product
+    var product models.Product
+    var err error
 
-	if err := h.DB.Preload("Seller").Where("slug = ?", slug).First(&product).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Produk tidak ditemukan"})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data produk"})
-	}
+    if id, parseErr := strconv.Atoi(identifier); parseErr == nil {
+        err = h.DB.Preload("Seller").Preload("Category").First(&product, id).Error
+    } else {
+        err = h.DB.Preload("Seller").Preload("Category").Where("slug = ?", identifier).First(&product).Error
+    }
 
-	response := ProductResponse{
-		ID:          product.ID,
-		Name:        product.Name,
-		Slug:        product.Slug,
-		Description: product.Description,
-		Price:       product.Price,
-		Stock:       product.Stock,
-		ImageURL:    product.ImageURL,
-		Seller: UserResponse{
-			ID:       product.Seller.ID,
-			Username: product.Seller.Username,
-			Email:    product.Seller.Email,
-		},
-		Category: CategoryResponse{
-			ID:   product.Category.ID,
-			Name: product.Category.Name,
-			Slug: product.Category.Slug,
-		},
-	}
+    if err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Produk tidak ditemukan"})
+        }
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengambil data produk"})
+    }
 
-	return c.Status(fiber.StatusOK).JSON(response)
+    response := ProductResponse{
+        ID:          product.ID,
+        Name:        product.Name,
+        Slug:        product.Slug,
+        Description: product.Description,
+        Price:       product.Price,
+        Stock:       product.Stock,
+        ImageURL:    product.ImageURL,
+        Seller: UserResponse{
+            ID:       product.Seller.ID,
+            Username: product.Seller.Username,
+            Email:    product.Seller.Email,
+        },
+        Category: CategoryResponse{
+            ID:   product.Category.ID,
+            Name: product.Category.Name,
+            Slug: product.Category.Slug,
+        },
+    }
+
+    return c.Status(fiber.StatusOK).JSON(response)
 }
+
 
 func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
 	id := c.Params("id")
