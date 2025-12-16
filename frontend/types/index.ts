@@ -18,7 +18,7 @@ export interface Notification {
 }
 
 export interface Category {
-  id: number;
+  ID: number;
   name: string;
   slug: string;
 }

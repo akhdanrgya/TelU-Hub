@@ -52,8 +52,8 @@ const EditProductPage = () => {
         setStock(product.stock);
         setExistingImageUrl(product.image_url);
 
-        if (product.category?.id) {
-            setCategoryId(String(product.category.id));
+        if (product.category?.ID) {
+            setCategoryId(String(product.category.ID));
         } else if (product.category_id) {
             setCategoryId(String(product.category_id));
         }
@@ -144,7 +144,7 @@ const EditProductPage = () => {
             isRequired
         >
             {(item) => (
-                <SelectItem key={String(item.id)} textValue={item.name}>
+                <SelectItem key={String(item.ID)} textValue={item.name}>
                     {item.name}
                 </SelectItem>
             )}

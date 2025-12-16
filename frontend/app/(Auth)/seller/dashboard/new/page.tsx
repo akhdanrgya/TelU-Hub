@@ -10,10 +10,11 @@ import { Spinner } from "@heroui/spinner";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Image } from "@heroui/image";
 import { Select, SelectItem } from "@heroui/select"; // 👈 Import Select & SelectItem
+import { json } from "stream/consumers";
 
 // Definisi tipe simpel buat Category
 interface Category {
-  id: number;
+  ID: number;
   name: string;
   slug: string;
 }
@@ -47,6 +48,7 @@ const AddProductPage = () => {
       try {
         const res = await api.get("/categories");
         const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        console.log(`INI DATA ${JSON.stringify(data)}}`)
         setCategories(data);
       } catch (err) {
         console.error("Gagal ambil kategori", err);
@@ -157,7 +159,7 @@ const AddProductPage = () => {
                 items={categories}
             >
                 {(item) => (
-                    <SelectItem key={String(item.id)} textValue={item.name}>
+                    <SelectItem key={String(item.ID)} textValue={item.name}>
                         {item.name}
                     </SelectItem>
                 )}
