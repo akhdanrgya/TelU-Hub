@@ -10,6 +10,7 @@ import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
 import NextLink from "next/link";
 import { useStockStream } from "@/hooks/useStockStream";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ProductDetailPage = () => {
 
@@ -20,6 +21,12 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const liveStock = useStockStream(product?.id || null);
+  const { addToCart, loadingCart } = useAuth()
+
+  const handleAddToCart = () => {
+    if (!product) return; 
+    addToCart(product.id, 1);
+  };
 
   useEffect(() => {
     if (slug) {
@@ -115,7 +122,8 @@ const ProductDetailPage = () => {
             size="lg"
             className="mt-6 w-full md:w-auto"
             disabled={(liveStock !== null ? liveStock : product.stock) === 0}
-            onPress={() => console.log(`Tambah ${product.name} ke cart`)}
+            isLoading={loadingCart}
+            onPress={handleAddToCart}
           >
             {(liveStock !== null ? liveStock : product.stock) === 0 
               ? "Stok Habis" 
