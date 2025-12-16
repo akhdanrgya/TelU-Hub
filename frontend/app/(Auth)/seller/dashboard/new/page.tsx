@@ -117,7 +117,7 @@ const AddProductPage = () => {
         price: parseFloat(price),
         stock: parseInt(stock),
         image_url: imageUrl, 
-        category_id: parseInt(categoryId), // 🔥 Kirim ID Kategori (convert string to number)
+        category_id: parseInt(categoryId),
       });
 
       router.push("/"); 
@@ -154,11 +154,10 @@ const AddProductPage = () => {
                 onChange={(e) => setCategoryId(e.target.value)}
                 isInvalid={!!formErrors.category}
                 errorMessage={formErrors.category}
-                items={categories} // 👈 Pake props items biar aman dari error TS
+                items={categories}
             >
                 {(item) => (
-                    // Value pake ID (stringified otomatis sama HTML select)
-                    <SelectItem key={String(item.name)} textValue={item.name}>
+                    <SelectItem key={String(item.id)} textValue={item.name}>
                         {item.name}
                     </SelectItem>
                 )}
