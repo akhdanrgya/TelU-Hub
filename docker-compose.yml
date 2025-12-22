@@ -23,29 +23,37 @@ services:
     container_name: teluhub_backend
     restart: always
     ports:
-      - "8910:8910"  # Port Fiber
-      - "50051:50051" # Port gRPC Internal (Opsional diexpose)
-      - "8081:8081"   # Port gRPC-Web Proxy
+      - "8910:8910"    # Fiber API
+      - "50051:50051"  # gRPC internal
+      - "8081:8081"    # gRPC-Web proxy
     env_file:
       - ./.env
     environment:
-      - PORT=8910
-      - DB_HOST=postgres # Nembak ke service postgres di atas
-      - DB_PORT=5432
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - JWT_SECRET=${JWT_SECRET}
-      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
-      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
-      - CLIENT_URL=${CLIENT_URL}
-      - SERVER_URL=${SERVER_URL}
+      # FIX PALING PENTING
+      APP_PORT: ":8910"
+
+      # DB config
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+
+      # Auth + Midtrans
+      JWT_SECRET: ${JWT_SECRET}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY}
+
+      # Domain frontend & backend
+      CLIENT_URL: ${CLIENT_URL}
+      SERVER_URL: ${SERVER_URL}
+
     depends_on:
       - postgres
     volumes:
-      - ./backend/uploads:/root/uploads # Biar foto gak ilang pas restart
+      - ./backend/uploads:/root/uploads
 
-  # 3. Frontend (Next.js)
+  # 3. Frontend (Next.js) — optional
   frontend:
     env_file:
       - ./.env
@@ -53,7 +61,6 @@ services:
       context: ./frontend
       dockerfile: DockerFile
       args:
-        # URL API Backend (Domain Publik / HTTPS)
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
         NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
     container_name: teluhub_frontend
