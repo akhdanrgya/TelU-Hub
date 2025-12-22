@@ -92,39 +92,56 @@ func runGrpcServer(stockSvc *grpc_service.StockService, port string) *grpc.Serve
 }
 
 func runGrpcWebServer(grpcServer *grpc.Server, port string, allowedOrigin string) {
-	wrappedGrpc := grpcweb.WrapServer(
-		grpcServer,
-		grpcweb.WithOriginFunc(func(origin string) bool {
-			return origin == allowedOrigin
-		}),
-	)
+    wrappedGrpc := grpcweb.WrapServer(
+        grpcServer,
+        grpcweb.WithOriginFunc(func(origin string) bool {
+            log.Printf("📡 gRPC-Web Request from Origin: %s", origin)
+            
+            return true 
+        }),
+        grpcweb.WithWebsockets(true), 
+        grpcweb.WithWebsocketOriginFunc(func(req *http.Request) bool {
+            return true
+        }),
+    )
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, x-grpc-web, X-User-Agent, Authorization, grpc-timeout")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+    handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        requestOrigin := r.Header.Get("Origin")
+        
+        if requestOrigin != "" {
+            w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+        } else {
+            w.Header().Set("Access-Control-Allow-Origin", "*")
+        }
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+        w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, x-grpc-web, X-User-Agent, Authorization, grpc-timeout, x-grpc-web-react-native")
+        w.Header().Set("Access-Control-Allow-Credentials", "true")
+        
+        w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+        w.Header().Set("Pragma", "no-cache")
+        w.Header().Set("Expires", "0")
 
-		if wrappedGrpc.IsGrpcWebRequest(r) || wrappedGrpc.IsAcceptableGrpcCorsRequest(r) || wrappedGrpc.IsGrpcWebSocketRequest(r) {
-			wrappedGrpc.ServeHTTP(w, r)
-			return
-		}
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
 
-		http.NotFound(w, r)
-	})
+        if wrappedGrpc.IsGrpcWebRequest(r) || wrappedGrpc.IsAcceptableGrpcCorsRequest(r) || wrappedGrpc.IsGrpcWebSocketRequest(r) {
+            wrappedGrpc.ServeHTTP(w, r)
+            return
+        }
 
-	httpServer := &http.Server{
-		Addr:    port,
-		Handler: handler,
-	}
+        http.NotFound(w, r)
+    })
 
-	log.Printf("👨‍🚀 Server gRPC-Web (Proxy) jalan di port %s, Allow Origin: %s", port, allowedOrigin)
-	if err := httpServer.ListenAndServe(); err != nil {
-		log.Fatalf("Gagal 'serve' gRPC-Web: %v", err)
-	}
+    httpServer := &http.Server{
+        Addr:    port,
+        Handler: handler,
+    }
+
+    log.Printf("👨‍🚀 Server gRPC-Web (Proxy) jalan di port %s (CORS Bebas)", port)
+    if err := httpServer.ListenAndServe(); err != nil {
+        log.Fatalf("Gagal 'serve' gRPC-Web: %v", err)
+    }
 }
