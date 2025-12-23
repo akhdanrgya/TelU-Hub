@@ -14,6 +14,12 @@ const nextConfig = {
         port: "8910",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "202-10-34-23.sslip.io",
+        port: "",
+        pathname: "/uploads/**",
+      },
     ],
   },
 
