@@ -9,6 +9,7 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Hitung yang belum dibaca
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const fetchNotifications = useCallback(async () => {
@@ -33,7 +34,7 @@ export const useNotifications = () => {
   }, [isAuthenticated, fetchNotifications]);
 
   const socketUrl =
-    isAuthenticated && user
+    isAuthenticated && user?.id 
       ? (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8910/api/v1")
           .replace(/^http/, "ws") + `/ws/notifications?user_id=${user.id}`
       : null;
@@ -44,14 +45,39 @@ export const useNotifications = () => {
     reconnectInterval: 3000,
   });
 
+
   useEffect(() => {
     if (lastMessage !== null) {
       try {
-        const newNotification = JSON.parse(lastMessage.data) as Notification;
-        setNotifications((prev) => [newNotification, ...prev]);
+        const rawData = JSON.parse(lastMessage.data);
+        
+        console.log("📨 [WS RAW] Data Masuk:", rawData);
+
+        const newNotification: Notification = {
+            id: rawData.id || rawData.ID,
+            user_id: rawData.user_id || rawData.UserID,
+            type: rawData.type || rawData.Type,
+            title: rawData.title || rawData.Title,
+            message: rawData.message || rawData.Message,
+            reference_id: rawData.reference_id || rawData.ReferenceID,
+            is_read: rawData.is_read || rawData.IsRead || false,
+            created_at: rawData.created_at || rawData.CreatedAt || new Date().toISOString(),
+        };
+
+        if (!newNotification.id) {
+            console.warn("⚠️ [WS WARNING] Data tidak valid (No ID):", rawData);
+            return;
+        }
+
+        console.log("✅ [WS SUCCESS] State Updated:", newNotification.title);
+
+        setNotifications((prev) => {
+            if (prev.some(n => n.id === newNotification.id)) return prev;
+            return [newNotification, ...prev];
+        });
         
       } catch (e) {
-        console.error("Gagal parse notifikasi WS:", e);
+        console.error("❌ Gagal parse notifikasi WS:", e);
       }
     }
   }, [lastMessage]);
