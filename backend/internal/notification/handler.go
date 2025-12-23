@@ -49,7 +49,7 @@ func (h *Handler) HandleWSConnection(c *websocket.Conn) {
 	userID := uint(userIDU64)
 
 	h.Service.Hub.Register(userID, c)
-	defer h.Service.Hub.Unregister(userID)
+	defer h.Service.Hub.Unregister(userID,c)
 
 	for {
 		_, _, err := c.ReadMessage()
